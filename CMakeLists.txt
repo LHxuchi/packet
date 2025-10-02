@@ -13,3 +13,5 @@ file(GLOB_RECURSE SRC
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_library(packet SHARED ${SRC})
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/test")

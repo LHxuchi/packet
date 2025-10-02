@@ -12,4 +12,4 @@ file(GLOB_RECURSE SRC
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-add_library(packet ${SRC})
+add_library(packet SHARED ${SRC})

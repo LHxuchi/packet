@@ -8,6 +8,7 @@
 
 namespace data_packet
 {
+
     /**
      * @brief 头接口，指明文件头必须实现的功能。
      */
@@ -20,7 +21,7 @@ namespace data_packet
          * @brief 获取文件头数据流
          * @return
          */
-        virtual std::unique_ptr<const char[]> get_buffer() = 0;
+        virtual std::unique_ptr<char[]> get_buffer() = 0;
 
         /**
          * @brief 根据输入数据流设置文件头

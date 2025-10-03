@@ -23,6 +23,34 @@ namespace data_packet
 
         size_t header_size() override;
 
+        [[nodiscard]] word get_version() const;
+
+        void set_version(word other_version);
+
+        [[nodiscard]] dword get_crc_32() const;
+
+        void set_crc_32(dword other_crc_32);
+
+        [[nodiscard]] qword get_creation_time() const;
+
+        void refresh_creation_time();
+
+        [[nodiscard]] dword get_file_number() const;
+
+        void set_file_number(dword other_file_number);
+
+        [[nodiscard]] qword get_file_size() const;
+
+        void set_file_size(qword other_file_size);
+
+        [[nodiscard]] qword get_original_file_size() const;
+
+        void set_original_file_size(qword other_original_file_size);
+
+        [[nodiscard]] dword get_checksum() const;
+
+        void refresh_checksum();
+
     private:
         byte version[2]{0};
         byte creation_time[8]{0};

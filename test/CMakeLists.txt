@@ -10,6 +10,8 @@ aux_source_directory("${CMAKE_SOURCE_DIR}/test/src" test_files)
 # 添加测试目标
 add_executable(utest ${test_files})
 
+add_dependencies(utest packet)
+
 # 链接库：测试程序需要链接待测试的库和 Catch2
 target_link_libraries(utest PRIVATE packet Catch2::Catch2WithMain)
 

@@ -14,4 +14,10 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_library(packet SHARED ${SRC})
 
+# 在测试目标定义后添加
+set_target_properties(packet PROPERTIES
+        CMAKE_BUILD_TYPE Debug
+        COMPILE_FLAGS "-g -O0"  # -g 生成调试信息，-O0 关闭优化
+)
+
 add_subdirectory("${CMAKE_SOURCE_DIR}/test")

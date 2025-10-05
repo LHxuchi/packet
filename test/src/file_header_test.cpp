@@ -4,25 +4,23 @@
 
 #include"../../include/header/file_header.h"
 
+#include <fstream>
+#include <iostream>
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("file header","[header]")
 {
     using namespace data_packet;
-
-    std::unique_ptr<byte[]> buffer;
-    dword checksum = 0;
-
     SECTION("getter and setter")
     {
         file_header test_header;
 
         /* version = 2
-         * creation_time = 20030820
+         * creation_time = now
          * file_number = 12
          * file_size = 123456
          * original_file_size = 234567
-         * CRC = 0xffffffff
+         * CRC = 0xabcdef12
          */
         test_header.set_version(2);
         REQUIRE(test_header.get_version() == 2);
@@ -44,33 +42,25 @@ TEST_CASE("file header","[header]")
         REQUIRE(timestamp - test_header.get_creation_time() <= 2);
 
 
-        test_header.set_crc_32(0xffffffff);
-        REQUIRE(test_header.get_crc_32() == 0xffffffff);
+        test_header.set_crc_32(0xabcdef12);
+        REQUIRE(test_header.get_crc_32() == 0xabcdef12);
 
         test_header.refresh_checksum();
-        checksum = test_header.get_checksum();
+        auto checksum = test_header.get_checksum();
 
-        buffer = test_header.get_buffer();
+        auto buffer = test_header.get_buffer();
+
+        SECTION("buffer")
+        {
+            test_header.set_buffer(buffer.get(),38);
+            CHECK(test_header.get_version() == 2);
+            CHECK(test_header.get_file_number() == 12);
+            CHECK(test_header.get_file_size() == 123456);
+            CHECK(test_header.get_original_file_size() == 234567);
+            CHECK(test_header.get_crc_32() == 0xabcdef12);
+            CHECK(timestamp - test_header.get_creation_time() < 2);
+            CHECK(checksum == test_header.get_checksum());
+        }
     }
 
-    SECTION("buffer")
-    {
-        file_header test_header;
-
-        /* version = 2
-         * creation_time = 20030820
-         * file_number = 12
-         * file_size = 123456
-         * original_file_size = 234567
-         * CRC = 0xffffffff
-         */
-
-        test_header.set_buffer(buffer.get(),38);
-        REQUIRE(test_header.get_version() == 2);
-        REQUIRE(test_header.get_file_number() == 12);
-        REQUIRE(test_header.get_file_size() == 123456);
-        REQUIRE(test_header.get_original_file_size() == 234567);
-        REQUIRE(test_header.get_crc_32() == 0xffffffff);
-        REQUIRE(test_header.get_checksum() == checksum);
-    }
 }

@@ -6,6 +6,7 @@
 #include "../../include/utils/checksum.h"
 
 #include <chrono>
+#include <cstring>
 
 namespace data_packet
 {
@@ -16,11 +17,11 @@ namespace data_packet
         unsigned int offset = 0;
         auto append_in_buffer = [&buffer, &offset](const byte data[],unsigned short size)
         {
-            while (size > 0)
+            for (unsigned short i = 0; i < size; i++)
             {
-                buffer[offset + size - 1] = data[size-1];
-                --size;
+                buffer[offset + i] = data[i];
             }
+            offset += size;
         };
 
         append_in_buffer(version, sizeof(version));
@@ -29,21 +30,22 @@ namespace data_packet
         append_in_buffer(file_size, sizeof(file_size));
         append_in_buffer(original_file_size, sizeof(original_file_size));
         append_in_buffer(checksum, sizeof(checksum));
-        append_in_buffer(creation_time, sizeof(creation_time));
+        append_in_buffer(crc_32, sizeof(crc_32));
 
         return buffer;
     }
 
     void file_header::set_buffer(const byte* data, size_t size)
     {
+        if (data == nullptr)
+        {
+            throw std::invalid_argument("[file_header::set_buffer] data pointer is null");
+        }
+
         unsigned int offset = 0;
         auto write_in_header = [&data,&offset](byte member[], size_t num)
         {
-            while (num > 0)
-            {
-                member[num - 1] = data[offset + num - 1];
-                --num;
-            }
+            memcpy(member, data + offset, num);
             offset += num;
         };
 

@@ -17,9 +17,17 @@ namespace data_packet
 
         ~file_header() override = default;
 
+        /**
+         * @brief 获取file_header的序列化数据
+         * @return 序列化的buffer
+         */
         std::unique_ptr<char[]> get_buffer() override;
 
-        void set_buffer(const char* data, size_t size) override;
+        /**
+         * @brief 反序列化
+         * @param data 指定序列化数据起始位置
+         */
+        void set_buffer(const char* data) override;
 
         size_t header_size() override;
 

@@ -28,7 +28,7 @@ namespace data_packet
          * @param data 指定的数据流
          * @param size 数据流长度
          */
-        virtual void set_buffer(const char* data, size_t size) = 0;
+        virtual void set_buffer(const char* data) = 0;
 
         /**
          * @brief 获取当前文件头长度

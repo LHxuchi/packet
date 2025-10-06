@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 // 辅助函数：生成随机字节数组
 template<size_t N>
 std::array<uint8_t, N> generate_random_bytes() {
-    std::array<uint8_t, N> arr;
+    std::array<uint8_t, N> arr{};
     for (auto& b : arr) {
         b = static_cast<uint8_t>(rand() % 256);
     }
@@ -21,7 +21,7 @@ std::array<uint8_t, N> generate_random_bytes() {
 
 // 辅助函数：创建新的local_file_header实例
 local_file_header create_header() {
-    return local_file_header();
+    return {};
 }
 
 TEST_CASE("local_file_header basic functionality", "[local_file_header]") {
@@ -183,7 +183,7 @@ TEST_CASE("local_file_header buffer serialization/deserialization", "[local_file
 
         // 反序列化到新对象
         auto deserialized = create_header();
-        deserialized.set_buffer(buffer.get(), original.header_size());
+        deserialized.set_buffer(buffer.get());
 
         // 验证数据一致性
         CHECK(deserialized.get_uid() == original.get_uid());

@@ -47,17 +47,13 @@ namespace data_packet
         return buffer;
     }
 
-    void local_file_header::set_buffer(const char* data, size_t size)
+    void local_file_header::set_buffer(const char* data)
     {
         if (!data)
         {
             throw std::invalid_argument("[local_file_header::set_buffer] data pointer is null");
         }
 
-        if (size < SIZE)
-        {
-            throw std::invalid_argument("[local_file_header::set_buffer] local file header size is too small");
-        }
 
         unsigned int offset = 0;
         auto get_data = [&data,&offset](byte* posi,size_t len)
@@ -257,8 +253,8 @@ namespace data_packet
         auto bytes = to_bytes(perms_bits);
         file_type_and_permissions_[1] = std::get<1>(bytes);
 
-        file_type_and_permissions_[0] &= 0xfe;
-        file_type_and_permissions_[0] |= (std::get<0>(bytes) & 1);
+        file_type_and_permissions_[0] &= static_cast<byte>(0xfe);
+        file_type_and_permissions_[0] |= static_cast<byte>(std::get<0>(bytes) & static_cast<byte>(0x01));
     }
 
     std::filesystem::file_type local_file_header::get_file_type() const
@@ -322,7 +318,7 @@ namespace data_packet
             type_bits = 7;
             break;
         default: // 包括fs_type::unknown及其他未定义类型
-            type_bits = 0xff; // 使用一个超出已知范围的值表示未知类型
+            type_bits = (byte)0xff; // 使用一个超出已知范围的值表示未知类型
             break;
         }
 
@@ -330,7 +326,7 @@ namespace data_packet
         // 先将type_bits左移9位，对应get_file_type中右移9位的逆操作
         // 再用file_type_mask掩码确保只修改类型相关的位
         file_type_and_permissions_[0] &= 1;
-        file_type_and_permissions_[0] |= (type_bits << 1);
+        file_type_and_permissions_[0] |= static_cast<byte>(type_bits << 1);
     }
 
     uint32_t local_file_header::get_crc_32() const

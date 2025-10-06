@@ -52,7 +52,7 @@ TEST_CASE("file header","[header]")
 
         SECTION("buffer")
         {
-            test_header.set_buffer(buffer.get(),38);
+            test_header.set_buffer(buffer.get());
             CHECK(test_header.get_version() == 2);
             CHECK(test_header.get_file_number() == 12);
             CHECK(test_header.get_file_size() == 123456);

@@ -35,7 +35,7 @@ namespace data_packet
         return buffer;
     }
 
-    void file_header::set_buffer(const byte* data, size_t size)
+    void file_header::set_buffer(const byte* data)
     {
         if (data == nullptr)
         {

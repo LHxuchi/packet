@@ -31,7 +31,7 @@ namespace data_packet
 
         std::unique_ptr<char[]> get_buffer() override;
 
-        void set_buffer(const char* data, size_t size) override;
+        void set_buffer(const char* data) override;
 
         size_t header_size() override;
 
@@ -117,11 +117,13 @@ namespace data_packet
         std::unique_ptr<byte[]> file_name_{nullptr};
 
 
-        static constexpr byte compression_method_mask = 0xf0;
+        static constexpr byte compression_method_mask = static_cast<byte>(0xf0);
         static constexpr byte encryption_method_mask = 0xf;
         static constexpr word permission_mask = 0x1ff;
-        static constexpr byte file_type_mask = 0xfe;
+        static constexpr byte file_type_mask = static_cast<byte>(0xfe);
 
+
+    public:
         static constexpr size_t SIZE = sizeof(uid_) + sizeof(gid_) + sizeof(uname_) +
             sizeof(gname_) + sizeof(creation_time_) + sizeof(last_modification_time_) +
                 sizeof(last_access_time_) + sizeof(file_type_and_permissions_) + sizeof(crc_32_)+

@@ -177,6 +177,7 @@ TEST_CASE("local_file_header buffer serialization/deserialization", "[local_file
         original.set_file_size(987654321);
         original.set_file_name("serialization_test.dat");
         original.set_link_name("test_link");
+        original.refresh_checksum();
 
         // 获取序列化缓冲区
         auto buffer = original.get_buffer();
@@ -200,6 +201,7 @@ TEST_CASE("local_file_header buffer serialization/deserialization", "[local_file
         CHECK(deserialized.get_salt() == original.get_salt());
         CHECK(deserialized.get_original_file_size() == original.get_original_file_size());
         CHECK(deserialized.get_file_size() == original.get_file_size());
+        CHECK(deserialized.check());
     }
 
 }

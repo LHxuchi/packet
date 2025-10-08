@@ -60,7 +60,7 @@ namespace data_packet
          * @brief 将文件头信息序列化为字节缓冲区
          * @return 包含文件头信息的唯一指针字节数组
          */
-        std::unique_ptr<char[]> get_buffer() override;
+        std::unique_ptr<char[]> get_buffer() const override;
 
         /**
          * @brief 从字节缓冲区反序列化文件头信息
@@ -72,7 +72,7 @@ namespace data_packet
          * @brief 获取文件头的大小
          * @return 文件头的大小(字节数)
          */
-        size_t header_size() override;
+        size_t header_size() const override;
 
         /**
          * @brief 获取文件所有者的用户ID(UID)
@@ -311,6 +311,12 @@ namespace data_packet
          * @param file_name 文件名字符串
          */
         void set_file_name(const std::string& file_name);
+
+        /**
+         * @brief 校验当前字段是否修改
+         * @return true 无修改， false 被修改
+         */
+        bool check();
 
     private:
         byte uid_[4]{0};                     ///< 用户ID(UID)，4字节

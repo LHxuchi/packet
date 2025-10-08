@@ -60,6 +60,7 @@ TEST_CASE("file header","[header]")
             CHECK(test_header.get_crc_32() == 0xabcdef12);
             CHECK(timestamp - test_header.get_creation_time() < 2);
             CHECK(checksum == test_header.get_checksum());
+            CHECK(test_header.check());
         }
     }
 

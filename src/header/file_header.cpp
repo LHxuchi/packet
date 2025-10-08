@@ -10,7 +10,7 @@
 
 namespace data_packet
 {
-    std::unique_ptr<char[]> file_header::get_buffer()
+    std::unique_ptr<char[]> file_header::get_buffer() const
     {
         std::unique_ptr<byte[]> buffer = std::make_unique<byte[]>(header_size());
 
@@ -59,7 +59,7 @@ namespace data_packet
 
     }
 
-    size_t file_header::header_size()
+    size_t file_header::header_size() const
     {
         return SIZE;
     }
@@ -198,5 +198,18 @@ namespace data_packet
         checksum[1] = std::get<1>(bytes);
         checksum[2] = std::get<2>(bytes);
         checksum[3] = std::get<3>(bytes);
+    }
+
+    bool file_header::check()
+    {
+        auto tmp_checksum = get_checksum();
+
+        std::vector<std::pair<const char*,size_t>> datas{
+                {version,sizeof(version)},{creation_time,sizeof(creation_time)},
+                {file_number,sizeof(file_number)},{file_size,sizeof(file_size)},
+                {original_file_size,sizeof(original_file_size)},{crc_32,sizeof(crc_32)}
+        };
+
+        return tmp_checksum == calculate_checksum(datas);
     }
 } // data_packet

@@ -37,7 +37,7 @@ namespace data_packet
          * @brief 获取file_header的序列化数据
          * @return 序列化的buffer，包含所有文件头信息
          */
-        std::unique_ptr<char[]> get_buffer() override;
+        std::unique_ptr<char[]> get_buffer() const override;
 
         /**
          * @brief 从序列化数据反构造file_header
@@ -49,7 +49,7 @@ namespace data_packet
          * @brief 获取文件头的大小
          * @return 文件头的大小(字节数)
          */
-        size_t header_size() override;
+        size_t header_size() const override;
 
         /**
          * @brief 获取文件格式版本号
@@ -132,6 +132,8 @@ namespace data_packet
          * @brief 刷新文件头的校验和(重新计算)
          */
         void refresh_checksum();
+
+        bool check();
 
     private:
         byte version[2]{0};               ///< 文件格式版本号，2字节

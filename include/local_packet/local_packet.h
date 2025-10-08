@@ -83,6 +83,15 @@ namespace data_packet
         }
 
         /**
+         * @brief local_file_header序列化函数
+         * @param buffer 指定需要序列化的数据首部
+         */
+        void set_header_buffer(const byte* buffer)
+        {
+            _header->set_buffer(buffer);
+        }
+
+        /**
          * @brief 设置文件所有者的用户ID(UID)
          * @param uid 要设置的用户ID值
          * @note 直接转发到底层local_file_header的对应方法
@@ -222,7 +231,7 @@ namespace data_packet
          */
         void refresh_crc_32();
 
-        const local_file_header& header() const { return *_header; }
+        [[nodiscard]] const local_file_header& info() const { return *_header; }
 
     private:
         std::unique_ptr<local_file_header> _header{nullptr};

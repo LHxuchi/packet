@@ -21,12 +21,11 @@ namespace data_packet
          * @brief 获取文件头数据流
          * @return
          */
-        virtual std::unique_ptr<char[]> get_buffer() = 0;
+        virtual std::unique_ptr<char[]> get_buffer() const = 0;
 
         /**
          * @brief 根据输入数据流设置文件头
          * @param data 指定的数据流
-         * @param size 数据流长度
          */
         virtual void set_buffer(const char* data) = 0;
 
@@ -34,7 +33,7 @@ namespace data_packet
          * @brief 获取当前文件头长度
          * @return 当前文件头长度
          */
-        virtual size_t header_size() = 0;
+        [[nodiscard]] virtual size_t header_size() const = 0;
 
     };
 

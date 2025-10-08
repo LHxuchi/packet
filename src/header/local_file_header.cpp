@@ -10,7 +10,7 @@
 
 namespace data_packet
 {
-    std::unique_ptr<char[]> local_file_header::get_buffer()
+    std::unique_ptr<char[]> local_file_header::get_buffer() const
     {
         auto buffer = std::make_unique<byte[]>(header_size());
 
@@ -88,7 +88,7 @@ namespace data_packet
 
     }
 
-    size_t local_file_header::header_size()
+    size_t local_file_header::header_size() const
     {
         return make_word({file_name_length_[0], file_name_length_[1]}) +
             make_word({link_name_length_[0], link_name_length_[1]}) + SIZE;
@@ -360,7 +360,6 @@ namespace data_packet
         {last_access_time_, sizeof(last_access_time_)},
         {file_type_and_permissions_, sizeof(file_type_and_permissions_)},
         {crc_32_, sizeof(crc_32_)},
-        {checksum_, sizeof(checksum_)},
         {&compression_and_encryption_, sizeof(compression_and_encryption_)},
         {salt_, sizeof(salt_)},
         {original_file_size_, sizeof(original_file_size_)},
@@ -566,5 +565,32 @@ namespace data_packet
         {
             file_name_[i] = file_name[i];
         }
+    }
+
+    bool local_file_header::check()
+    {
+        auto tmp_checksum = get_checksum();
+
+        const std::vector<std::pair<const byte*, size_t>> datas{
+            {uid_, sizeof(uid_)},
+            {gid_, sizeof(gid_)},
+            {uname_, sizeof(uname_)},
+            {gname_, sizeof(gname_)},
+            {creation_time_, sizeof(creation_time_)},
+            {last_modification_time_, sizeof(last_modification_time_)},
+            {last_access_time_, sizeof(last_access_time_)},
+            {file_type_and_permissions_, sizeof(file_type_and_permissions_)},
+            {crc_32_, sizeof(crc_32_)},
+            {&compression_and_encryption_, sizeof(compression_and_encryption_)},
+            {salt_, sizeof(salt_)},
+            {original_file_size_, sizeof(original_file_size_)},
+            {file_size_, sizeof(file_size_)},
+            {link_name_length_, sizeof(link_name_length_)},
+            {file_name_length_, sizeof(file_name_length_)},
+            {link_name_.get(),get_link_name_length()},
+            {file_name_.get(),get_file_name_length()}
+        };
+
+        return tmp_checksum == (calculate_checksum(datas));
     }
 } // data_packet

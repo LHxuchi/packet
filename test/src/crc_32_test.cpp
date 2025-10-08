@@ -15,4 +15,7 @@ TEST_CASE("calculate and verify crc_32 code","[crc_32][utils]")
 
     REQUIRE(result == 0xc07a9f32);
     REQUIRE(data_packet::CRC_verify(result, str.begin(), str.end()));
+
+    result += 1;
+    REQUIRE(!data_packet::CRC_verify(result, str.begin(), str.end()));
 }

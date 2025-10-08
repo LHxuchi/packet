@@ -130,6 +130,7 @@ namespace data_packet
                     sizeof(checksum_) + sizeof(compression_and_encryption_) + sizeof(salt_) +
                         sizeof(original_file_size_) + sizeof(file_size_) + sizeof(link_name_length_) +
                             + sizeof(file_name_length_);
+        static constexpr size_t MAX_SIZE = SIZE + 0xffff + 0xffff;
     };
 } // data_packet
 

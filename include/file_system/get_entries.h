@@ -14,6 +14,13 @@ namespace data_packet
      * @param path 指定路径
      * @return 文件集合
      */
-    auto get_entries(const std::filesystem::path& path) -> std::set<std::filesystem::directory_entry>;
+    auto get_entries(const std::filesystem::path& path) -> std::multiset<std::filesystem::directory_entry>;
+
+    /**
+     * @brief 判断当前路径是否为硬链接
+     * @param path 指定路径
+     * @return true 是硬链接， false 不是硬链接
+     */
+    bool is_hard_link(const std::filesystem::path& path);
 }
 #endif //DATA_BACK_UP_GET_ENTRIES_H

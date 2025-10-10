@@ -4,11 +4,25 @@
 
 #ifndef DATA_BACK_UP_GET_ENTRIES_H
 #define DATA_BACK_UP_GET_ENTRIES_H
+
 #include <filesystem>
 #include <set>
 
 namespace data_packet
 {
+
+    /* 没法处理隐藏文件 */
+    /*
+    class ordered_by_inode
+    {
+    public:
+        bool operator()(const std::filesystem::directory_entry& a,const std::filesystem::directory_entry& b) const
+        {
+            return std::filesystem::equivalent(a.path().filename(),b.path().filename());
+        }
+    };
+    */
+
     /**
      * @brief 根据输入的指定路径输出路径下所有文件（包括隐藏文件）
      * @param path 指定路径

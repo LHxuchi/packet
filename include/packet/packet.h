@@ -32,7 +32,7 @@ namespace data_packet
          * @param other
          */
         packet(packet&& other) noexcept
-            : _header(std::move(other._header)),
+            : _header(other._header),
               _packets(std::move(other._packets)){}
 
         packet& operator=(const packet& other) = delete;
@@ -46,7 +46,7 @@ namespace data_packet
         {
             if (this == &other)
                 return *this;
-            _header = std::move(other._header);
+            _header = other._header;
             _packets = std::move(other._packets);
             return *this;
         }
@@ -55,13 +55,13 @@ namespace data_packet
          * @brief 获取当前包文件组
          * @return 包文件组
          */
-        const std::vector<local_packet>& packets() const { return _packets; }
+        [[nodiscard]] std::vector<local_packet>& packets() { return _packets; }
 
         /**
          * @brief 获取当前header中的信息
          * @return this->_header
          */
-        const file_header& info() const {return _header;}
+        [[nodiscard]] const file_header& info() const {return _header;}
 
         /**
          * @brief 设置当前文件版本号
@@ -99,12 +99,26 @@ namespace data_packet
          */
         void refresh_crc_32();
 
+        /**
+         * @brief 文件头序列化
+         * @param buffer 指定序列化数据起始位置
+         */
+        void set_header_buffer(const char* buffer){_header.set_buffer(buffer);}
+
 
 
     private:
         file_header _header{};
         std::vector<local_packet> _packets{};
     };
+
+    /**
+     * @brief 将指定路径下的文件打包
+     * @param path 指定路径
+     * @return 文件包
+     */
+    packet make_packet(const std::filesystem::path& path);
+
 } // data_packet
 
 #endif //DATA_BACK_UP_PACKET_H

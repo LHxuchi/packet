@@ -5,6 +5,8 @@
 #ifndef DATA_BACK_UP_LOCAL_PACKET_H
 #define DATA_BACK_UP_LOCAL_PACKET_H
 
+#include <array>
+
 #include "../header/local_file_header.h"
 
 namespace data_packet
@@ -19,7 +21,10 @@ namespace data_packet
         /**
          * @brief 默认构造函数
          */
-        local_packet() = default;
+        local_packet()
+        {
+            _header = std::make_unique<local_file_header>();
+        }
 
         /**
          * @brief 默认析构函数
@@ -121,14 +126,14 @@ namespace data_packet
 
         /**
          * @brief 设置文件的最后修改时间
-         * @param time 要设置的时间戳(自纪元以来的秒数或毫秒数)
+         * @param time 要设置的时间戳(自纪元以来的秒数)
          * @note 直接转发到底层local_file_header的对应方法
          */
         void set_last_modification_time(uint64_t time) { _header->set_last_modification_time(time); }
 
         /**
          * @brief 设置文件的最后访问时间
-         * @param time 要设置的时间戳(自纪元以来的秒数或毫秒数)
+         * @param time 要设置的时间戳(自纪元以来的秒数)
          * @note 直接转发到底层local_file_header的对应方法
          */
         void set_last_access_time(uint64_t time) { _header->set_last_access_time(time); }
@@ -234,7 +239,7 @@ namespace data_packet
         [[nodiscard]] const local_file_header& info() const { return *_header; }
 
     private:
-        std::unique_ptr<local_file_header> _header{nullptr};
+        std::unique_ptr<local_file_header> _header;
         std::unique_ptr<byte[]> _data{nullptr};
     };
 } // data_packet

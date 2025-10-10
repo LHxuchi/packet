@@ -25,7 +25,7 @@ auto data_packet::get_entries(const std::filesystem::path& path) -> std::multise
     fs::directory_iterator dir_it(path);
 
     // 最终结果
-    std::multiset<std::filesystem::directory_entry> entries;
+    decltype(get_entries(path)) entries;
 
     // 采用层序遍历，使用队列实现
     std::queue<std::filesystem::directory_iterator> entries_queue;

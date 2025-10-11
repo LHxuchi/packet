@@ -15,7 +15,25 @@ TEST_CASE("verify packet content and structure", "[packet]")
     namespace dp = data_packet;
     namespace fs = std::filesystem;
 
-    auto test_path = fs::path("/home/hyh/CLionProjects/packet/mytest");
+    // 创建目录结构
+    system("mkdir mytest");
+    system("mkdir mytest/dir1");
+    system("mkdir mytest/dir2");
+    system("mkdir mytest/.hidden_dir");
+
+    // 创建文件
+    system("touch mytest/test1.txt");
+    system("touch mytest/.hidden_file");
+    system("touch mytest/dir1/test1.txt");
+    system("touch mytest/dir2/test2.txt");
+    system("touch mytest/.hidden_dir/config");
+
+    // 创建链接
+    system("ln -s test1.txt mytest/symlink_file");
+    system("ln mytest/test1.txt mytest/hard_link_file");
+
+    auto test_path = fs::path("./mytest");
+    test_path = fs::canonical(test_path);
     auto pkt = dp::make_packet(test_path);
 
     // 验证文件总数（与现有测试呼应，确认目录结构解析正确）
@@ -48,11 +66,14 @@ TEST_CASE("verify packet content and structure", "[packet]")
         };
 
         // 检查每个预期文件是否存在于包中
+        unsigned int count = 0;
         for (const auto& p : pkt.packets())
         {
             auto ret = expected_files.find(p.info().get_file_name()) != expected_files.end();
             CHECK(ret);
+            ++count;
         }
+        CHECK(count == 10);
     }
 
     SECTION("check directory and fifo")
@@ -80,10 +101,22 @@ TEST_CASE("verify packet content and structure", "[packet]")
         bool hard_link_found = false;
         for (const auto& p : pkt.packets())
         {
-            if (p.info().get_file_name() == "hard_link_file")
+            if (p.info().get_file_name() == "hard_link_file" && p.info().get_link_name_length() > 0)
             {
                 hard_link_found = true;
-                // TODO
+                CHECK(p.info().get_original_file_size() == 0);
+                CHECK(p.info().get_file_size() == 0);
+                CHECK(p.info().get_link_name_length() > 0);
+                CHECK(p.info().get_link_name() == "test1.txt");
+                break;
+            }
+            if (p.info().get_file_name() == "test1.txt" && p.info().get_link_name_length() > 0)
+            {
+                hard_link_found = true;
+                CHECK(p.info().get_original_file_size() == 0);
+                CHECK(p.info().get_file_size() == 0);
+                CHECK(p.info().get_link_name_length() > 0);
+                CHECK(p.info().get_link_name() == "hard_link_file");
                 break;
             }
         }
@@ -211,5 +244,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
             CHECK(in_pkt.packets()[i].info().get_crc_32() == pkt.packets()[i].info().get_crc_32());
         }
     }
+
+    system("rm -rf mytest");
 
 }

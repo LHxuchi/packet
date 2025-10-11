@@ -6,7 +6,6 @@
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
-#include <climits>
 #include <fstream>
 #include <map>
 
@@ -189,7 +188,7 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
         struct stat file_stat{};
 
         // 获取文件状态信息（不跟随软链接）
-        if (lstat(path.c_str(), &file_stat) != 0)
+        if (lstat(entry.path().c_str(), &file_stat) != 0)
         {
             throw std::runtime_error("cannot stat " + path.string());
         }
@@ -197,8 +196,21 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
         // 填写包文件头，不包括软链接
         fill_in_local_header(tmp, file_stat, entry.path(), path);
 
-        // 根据文件类型处理不同类型的数据（非硬链接）
-        fill_in_local_header_link(tmp, entry, path);
+        if (files.find(file_stat.st_ino) != files.end())
+        {
+            // 处理硬链接
+            tmp.set_file_size(0);
+            tmp.set_original_file_size(0);
+            tmp.set_link_name_length(files.at(file_stat.st_ino).string().size());
+            tmp.set_link_name(files.at(file_stat.st_ino).string());
+        }
+        else
+        {
+            // 记录inode以及其对应路径
+            files.insert({file_stat.st_ino,tmp.info().get_file_name()});
+            // 根据文件类型处理不同类型的数据（非硬链接）
+            fill_in_local_header_link(tmp, entry, path);
+        }
 
         // 刷新当前本地数据包的CRC32和校验和
         tmp.refresh_crc_32();

@@ -58,6 +58,12 @@ namespace data_packet
         [[nodiscard]] std::vector<local_packet>& packets() { return _packets; }
 
         /**
+         * @brief 获取当前文件组（只读）
+         * @return 包文件组
+         */
+        [[nodiscard]] const std::vector<local_packet>& packets() const { return _packets; }
+
+        /**
          * @brief 获取当前header中的信息
          * @return this->_header
          */
@@ -106,6 +112,9 @@ namespace data_packet
         void set_header_buffer(const char* buffer){_header.set_buffer(buffer);}
 
 
+        friend std::ostream& operator<<(std::ostream& os, const packet& packet);
+
+        friend std::istream& operator>>(std::istream& is, packet& packet);
 
     private:
         file_header _header{};
@@ -118,6 +127,15 @@ namespace data_packet
      * @return 文件包
      */
     packet make_packet(const std::filesystem::path& path);
+
+    /**
+     * @brief 将指定路径的已打包文件解包
+     * @param path 指定路径
+     * @return 文件包
+     */
+    packet unpack_packet(const std::filesystem::path& path);
+
+
 
 } // data_packet
 

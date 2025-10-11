@@ -133,7 +133,7 @@ namespace data_packet
          */
         void refresh_checksum();
 
-        bool check();
+        [[nodiscard]] bool check() const;
 
     private:
         byte version[2]{0};               ///< 文件格式版本号，2字节
@@ -144,6 +144,7 @@ namespace data_packet
         byte checksum[4]{0};              ///< 文件头校验和，4字节
         byte crc_32[4]{0};                ///< 整个数据包的CRC32校验值，4字节
 
+    public:
         /**
          * @brief 文件头固定部分的总大小
          *

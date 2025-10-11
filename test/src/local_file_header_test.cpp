@@ -144,7 +144,9 @@ TEST_CASE("local_file_header set and get methods", "[local_file_header]") {
         const std::string test_filename = "test_file.txt";
         const std::string test_linkname = "../link_to_file";
 
+        header.set_file_name_length(test_filename.length());
         header.set_file_name(test_filename);
+        header.set_link_name_length(test_linkname.length());
         header.set_link_name(test_linkname);
 
         CHECK(header.get_file_name() == test_filename);

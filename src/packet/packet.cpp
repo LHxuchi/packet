@@ -7,42 +7,57 @@
 #include <grp.h>
 #include <sys/types.h>
 #include <climits>
-
-#include "../../include/packet/packet.h"
-
 #include <fstream>
 
+#include "../../include/packet/packet.h"
 #include "../../include/utils/byte_conversion.h"
 #include "../../include/utils/crc_32.h"
 #include "../../include/file_system/get_entries.h"
 
+/**
+ * @brief 刷新数据包的总文件大小（包含头部）
+ *
+ * 计算数据包头大小加上所有本地数据包的文件大小和头部大小的总和
+ */
 void data_packet::packet::refresh_file_size()
 {
-    qword size = _header.header_size();
+    qword size = _header.header_size(); // 起始大小为包头大小
     for (const auto& local_packet : _packets)
     {
-        size += local_packet.info().get_file_size();
-        size += local_packet.info().header_size();
+        size += local_packet.info().get_file_size(); // 累加每个数据包的文件大小
+        size += local_packet.info().header_size();   // 累加每个数据包的头部大小
     }
-    _header.set_file_size(size);
+    _header.set_file_size(size); // 设置总文件大小
 }
 
+/**
+ * @brief 刷新数据包的原始文件大小（包含头部）
+ *
+ * 计算数据包头大小加上所有本地数据包的原始文件大小和头部大小的总和
+ */
 void data_packet::packet::refresh_original_file_size()
 {
-    qword size = _header.header_size();
+    qword size = _header.header_size(); // 起始大小为包头大小
     for (const auto& local_packet : _packets)
     {
-        size += local_packet.info().get_original_file_size();
-        size += local_packet.info().header_size();
+        size += local_packet.info().get_original_file_size(); // 累加每个数据包的原始文件大小
+        size += local_packet.info().header_size();           // 累加每个数据包的头部大小
     }
-    _header.set_original_file_size(size);
+    _header.set_original_file_size(size); // 设置总原始文件大小
 }
 
+/**
+ * @brief 刷新数据包的CRC32校验值
+ *
+ * 基于所有本地数据包的CRC32值计算整个数据包的CRC32校验值
+ */
 void data_packet::packet::refresh_crc_32()
 {
+    // 创建缓冲区存储所有数据包的CRC32值（每个CRC32为4字节）
     auto buffer = std::make_unique<byte[]>(_packets.size() * 4);
     size_t offset = 0;
 
+    // 将每个数据包的CRC32值转换为字节并存入缓冲区
     for (const auto& local_packet : _packets)
     {
         auto bytes = to_bytes(local_packet.info().get_crc_32());
@@ -52,106 +67,213 @@ void data_packet::packet::refresh_crc_32()
         buffer[offset++] = std::get<3>(bytes);
     }
 
-    _header.set_crc_32(CRC_calculate(reinterpret_cast<uint8_t*>(buffer.get()),offset));
+    // 计算整个缓冲区的CRC32值并设置为数据包的CRC32
+    _header.set_crc_32(CRC_calculate(reinterpret_cast<uint8_t*>(buffer.get()), offset));
 }
 
+/**
+ * @brief 根据指定路径创建数据包
+ * @param path 要打包的文件或目录路径
+ * @return 包含路径下所有文件信息的数据包
+ * @throws std::runtime_error 当无法获取文件状态或读取软链接时抛出异常
+ *
+ * 该函数遍历指定路径下的所有条目（文件、目录、软链接等），
+ * 为每个条目创建本地数据包，收集文件属性、权限、内容等信息
+ */
 data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
 {
     namespace fs = std::filesystem;
 
-    packet pkt;
+    packet pkt; // 创建主数据包
 
+    // 获取路径下的所有条目（不跟随软链接）
     auto entries = get_entries(path);
 
+    // 预留空间以避免多次重新分配
     pkt.packets().reserve(entries.size());
 
+    // 遍历每个条目并创建对应的本地数据包
     for (const auto& entry : entries)
     {
         local_packet tmp;
         struct stat file_stat{};
+
+        // 获取文件状态信息（不跟随软链接）
         if (lstat(path.c_str(), &file_stat) != 0)
         {
             throw std::runtime_error("cannot stat " + path.string());
         }
 
+        // 设置用户和组信息
         tmp.set_uid(file_stat.st_uid);
         tmp.set_gid(file_stat.st_gid);
-        tmp.set_uname(getpwuid(file_stat.st_uid)->pw_name);
-        tmp.set_gname(getgrgid(file_stat.st_gid)->gr_name);
+        tmp.set_uname(getpwuid(file_stat.st_uid)->pw_name); // 获取用户名
+        tmp.set_gname(getgrgid(file_stat.st_gid)->gr_name); // 获取组名
+
+        // 设置时间信息
         tmp.refresh_creation_time();
-        tmp.set_last_modification_time(file_stat.st_mtime);
-        tmp.set_last_access_time(file_stat.st_atime);
+        tmp.set_last_modification_time(file_stat.st_mtime); // 最后修改时间
+        tmp.set_last_access_time(file_stat.st_atime);       // 最后访问时间
+
+        // 设置权限和文件类型
         tmp.set_permissions(entry.symlink_status().permissions());
-        tmp.set_file_type(entry.symlink_status().type());
+        tmp.set_file_type(entry.symlink_status().type()); // 不跟随软链接获取文件类型
+
+        // 设置压缩和加密方法（当前均为None）
         tmp.set_compression_method(local_file_header::compression_method::None);
         tmp.set_encryption_method(local_file_header::encryption_method::None);
-        tmp.set_salt(std::array<uint8_t, 16>{});
+        tmp.set_salt(std::array<uint8_t, 16>{}); // 设置空的盐值
+
+        // 设置文件大小信息
         tmp.set_original_file_size(file_stat.st_size);
         tmp.set_file_size(file_stat.st_size);
 
+        // 计算相对于根路径的文件名（不解析软链接）
         std::string file_name = entry.path().lexically_relative(path);
 
         tmp.set_file_name_length(file_name.size());
         tmp.set_file_name(file_name);
 
+        // 根据文件类型处理不同类型的数据
         switch (entry.symlink_status().type())
         {
-        case fs::file_type::regular:
-        case fs::file_type::block:
-        case fs::file_type::character:
+        case fs::file_type::regular:   // 常规文件
+        case fs::file_type::block:     // 块设备文件
+        case fs::file_type::character: // 字符设备文件
             {
+                // 读取文件内容到缓冲区
                 std::fstream file(entry.path(), std::ios::in | std::ios::binary);
                 auto buffer = std::make_unique<byte[]>(entry.file_size());
                 file.read(reinterpret_cast<char*>(buffer.get()), static_cast<long>(entry.file_size()));
-                tmp.set_data(std::move(buffer));
+                tmp.set_data(std::move(buffer)); // 设置文件数据
                 tmp.set_link_name_length(0);
                 tmp.set_link_name(std::string{});
                 break;
             }
-        case fs::file_type::fifo:
-        case fs::file_type::directory:
+        case fs::file_type::fifo:     // 命名管道
+        case fs::file_type::directory: // 目录
             {
+                // 目录和管道没有文件内容
                 tmp.set_file_size(0);
                 tmp.set_original_file_size(0);
                 tmp.set_link_name_length(0);
                 tmp.set_link_name(std::string{});
                 break;
             }
-        case fs::file_type::symlink:
+        case fs::file_type::symlink:  // 软链接
             {
                 char buf[PATH_MAX];  // PATH_MAX定义了系统最大路径长度
                 ssize_t len;
-                // 读取软链接目标路径
+                // 读取软链接指向的目标路径
                 len = readlink(entry.path().c_str(), buf, sizeof(buf) - 1);
                 if (len == -1) {
                     throw std::runtime_error("cannot readlink " + path.string());
                 }
                 buf[len] = '\0';  // 手动添加字符串结束符
                 tmp.set_link_name_length(len);
-                tmp.set_link_name(std::string(buf));
+                tmp.set_link_name(std::string(buf)); // 设置软链接目标
                 tmp.set_file_size(0);
                 tmp.set_original_file_size(0);
                 break;
             }
-        case fs::file_type::none:
+        case fs::file_type::none:     // 未知或不受支持的文件类型
             throw std::runtime_error(entry.path().string() + " file type not supported");
         default:
-            continue;
+            continue; // 跳过其他未处理的文件类型
         }
 
+        // 刷新当前本地数据包的CRC32和校验和
         tmp.refresh_crc_32();
         tmp.refresh_checksum();
 
+        // 将本地数据包添加到主数据包中
         pkt.packets().emplace_back(std::move(tmp));
     }
 
-    pkt.set_version(1);
-    pkt.refresh_creation_time();
-    pkt.refresh_file_number();
-    pkt.refresh_file_size();
-    pkt.refresh_original_file_size();
-    pkt.refresh_crc_32();
-    pkt.refresh_checksum();
+    // 设置主数据包的元数据信息
+    pkt.set_version(1); // 设置数据包版本
+    pkt.refresh_creation_time();          // 刷新创建时间
+    pkt.refresh_file_number();            // 刷新文件数量
+    pkt.refresh_file_size();              // 刷新总文件大小
+    pkt.refresh_original_file_size();     // 刷新总原始文件大小
+    pkt.refresh_crc_32();                 // 刷新CRC32校验值
+    pkt.refresh_checksum();               // 刷新校验和
+
+    return pkt;
+}
+
+std::ostream& data_packet::operator<<(std::ostream& os, const packet& packet)
+{
+    os.write(packet.info().get_buffer().get(),static_cast<long>(packet.info().header_size()));
+
+    for (const auto& local_pkt : packet.packets())
+    {
+        os.write(local_pkt.info().get_buffer().get(),static_cast<long>(local_pkt.info().header_size()));
+
+        os.write(local_pkt.get_data().get(),static_cast<long>(local_pkt.info().get_file_size()));
+    }
+
+    return os;
+}
+
+std::istream& data_packet::operator>>(std::istream& is, packet& packet)
+{
+    std::unique_ptr<byte[]> buffer{nullptr};
+    buffer = std::make_unique<byte[]>(file_header::SIZE);
+
+    // 读取总文件头前检查
+    if (!is.good()) {
+        throw std::runtime_error("Stream is in error state before reading header");
+    }
+
+    // 读取总文件头
+    is.read(buffer.get(), file_header::SIZE);
+    packet.set_header_buffer(buffer.get());
+
+    if (!packet.info().check())
+    {
+        throw std::runtime_error("packet header is not valid");
+    }
+
+    // 分配包文件个数
+    packet.packets().resize(packet.info().get_file_number());
+
+    // 填充包文件
+    for (auto& local_pkt : packet.packets())
+    {
+        // 读取本地文件头定长字段信息
+        buffer = std::make_unique<byte[]>(local_file_header::SIZE);
+        is.read(buffer.get(), local_file_header::SIZE);
+        local_pkt.set_header_buffer(buffer.get());
+
+        // 读取变长字段link_name 与 file_name
+        buffer = std::make_unique<byte[]>(local_pkt.info().get_link_name_length());
+        is.read(buffer.get(), local_pkt.info().get_link_name_length());
+        local_pkt.set_link_name(buffer.get());
+
+        // 填写文件内容
+        buffer = std::make_unique<byte[]>(local_pkt.info().get_file_name_length());
+        is.read(buffer.get(), local_pkt.info().get_file_name_length());
+        local_pkt.set_file_name(buffer.get());
+
+        // 校验
+        if (!local_pkt.info().check())
+        {
+            throw std::runtime_error("local packet file header is not valid");
+        }
+
+        // 读取文件信息
+        buffer = std::make_unique<byte[]>(local_pkt.info().get_file_size());
+        is.read(buffer.get(), static_cast<long>(local_pkt.info().get_file_size()));
+        local_pkt.set_data(std::move(buffer));
+    }
+
+    return is;
+}
+
+data_packet::packet data_packet::unpack_packet(const std::filesystem::path& path)
+{
+    packet pkt;
 
     return pkt;
 }

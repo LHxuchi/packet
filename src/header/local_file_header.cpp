@@ -544,9 +544,8 @@ namespace data_packet
 
     void local_file_header::set_link_name(const std::string& link_name)
     {
-        set_link_name_length(static_cast<word>(link_name.length()));
         link_name_ = std::make_unique<byte[]>(get_link_name_length());
-        for (word i = 0; i < link_name.length(); i++)
+        for (word i = 0; i < get_link_name_length(); i++)
         {
             link_name_[i] = link_name[i];
         }
@@ -559,15 +558,14 @@ namespace data_packet
 
     void local_file_header::set_file_name(const std::string& file_name)
     {
-        set_file_name_length(static_cast<word>(file_name.length()));
         file_name_ = std::make_unique<byte[]>(get_file_name_length());
-        for (word i = 0; i < file_name.length(); i++)
+        for (word i = 0; i < get_file_name_length(); i++)
         {
             file_name_[i] = file_name[i];
         }
     }
 
-    bool local_file_header::check()
+    bool local_file_header::check() const
     {
         auto tmp_checksum = get_checksum();
 

@@ -316,7 +316,7 @@ namespace data_packet
          * @brief 校验当前字段是否修改
          * @return true 无修改， false 被修改
          */
-        bool check();
+        [[nodiscard]] bool check() const;
 
     private:
         byte uid_[4]{0};                     ///< 用户ID(UID)，4字节

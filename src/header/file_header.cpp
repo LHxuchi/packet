@@ -200,7 +200,7 @@ namespace data_packet
         checksum[3] = std::get<3>(bytes);
     }
 
-    bool file_header::check()
+    bool file_header::check() const
     {
         auto tmp_checksum = get_checksum();
 

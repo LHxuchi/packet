@@ -8,11 +8,98 @@
 #include <sys/types.h>
 #include <climits>
 #include <fstream>
+#include <map>
 
 #include "../../include/packet/packet.h"
 #include "../../include/utils/byte_conversion.h"
 #include "../../include/utils/crc_32.h"
 #include "../../include/file_system/get_entries.h"
+
+namespace
+{
+    void fill_in_local_header(data_packet::local_packet& packet,const struct stat& file_stat,
+        const std::filesystem::path& path , const std::filesystem::path& root_path)
+    {
+        namespace fs = std::filesystem;
+        // 设置用户和组信息
+        packet.set_uid(file_stat.st_uid);
+        packet.set_gid(file_stat.st_gid);
+        packet.set_uname(getpwuid(file_stat.st_uid)->pw_name); // 获取用户名
+        packet.set_gname(getgrgid(file_stat.st_gid)->gr_name); // 获取组名
+
+        // 设置时间信息
+        packet.refresh_creation_time();
+        packet.set_last_modification_time(file_stat.st_mtime); // 最后修改时间
+        packet.set_last_access_time(file_stat.st_atime);       // 最后访问时间
+
+        // 设置权限和文件类型
+        packet.set_permissions(fs::directory_entry(path).symlink_status().permissions());
+        packet.set_file_type(fs::directory_entry(path).symlink_status().type()); // 不跟随软链接获取文件类型
+
+        // 设置压缩和加密方法（当前均为None）
+        packet.set_compression_method(data_packet::local_file_header::compression_method::None);
+        packet.set_encryption_method(data_packet::local_file_header::encryption_method::None);
+        packet.set_salt(std::array<uint8_t, 16>{}); // 设置空的盐值
+
+        // 设置文件大小信息
+        packet.set_original_file_size(file_stat.st_size);
+        packet.set_file_size(file_stat.st_size);
+
+        // 计算相对于根路径的文件名（不解析软链接）
+        const std::string file_name = path.lexically_relative(root_path);
+
+        packet.set_file_name_length(file_name.size());
+        packet.set_file_name(file_name);
+    }
+
+    void fill_in_local_header_link(data_packet::local_packet& packet,
+        const std::filesystem::directory_entry& entry,
+        const std::filesystem::path& root_path)
+    {
+        namespace fs = std::filesystem;
+        using namespace data_packet;
+        switch (entry.symlink_status().type())
+        {
+        case fs::file_type::regular:   // 常规文件
+        case fs::file_type::block:     // 块设备文件
+        case fs::file_type::character: // 字符设备文件
+            {
+                // 读取文件内容到缓冲区
+                std::fstream file(entry.path(), std::ios::in | std::ios::binary);
+                auto buffer = std::make_unique<byte[]>(entry.file_size());
+                file.read(reinterpret_cast<char*>(buffer.get()), static_cast<long>(entry.file_size()));
+                packet.set_data(std::move(buffer)); // 设置文件数据
+                packet.set_link_name_length(0);
+                packet.set_link_name(std::string{});
+                break;
+            }
+        case fs::file_type::fifo:     // 命名管道
+        case fs::file_type::directory: // 目录
+            {
+                // 目录和管道没有文件内容
+                packet.set_file_size(0);
+                packet.set_original_file_size(0);
+                packet.set_link_name_length(0);
+                packet.set_link_name(std::string{});
+                break;
+            }
+        case fs::file_type::symlink:  // 软链接
+            {
+                auto link_name = fs::relative(entry.path(), root_path);
+                packet.set_link_name_length(link_name.string().size());
+                packet.set_link_name(link_name.string());
+                packet.set_file_size(0);
+                packet.set_original_file_size(0);
+                break;
+            }
+        case fs::file_type::none:     // 未知或不受支持的文件类型
+            throw std::runtime_error(entry.path().string() + " file type not supported");
+        default:
+            return;
+            // 跳过其他未处理的文件类型
+        }
+    }
+}
 
 /**
  * @brief 刷新数据包的总文件大小（包含头部）
@@ -92,6 +179,9 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
     // 预留空间以避免多次重新分配
     pkt.packets().reserve(entries.size());
 
+    // 处理硬链接的映射表
+    std::map<decltype(stat::st_ino),fs::path> files;
+
     // 遍历每个条目并创建对应的本地数据包
     for (const auto& entry : entries)
     {
@@ -104,83 +194,11 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
             throw std::runtime_error("cannot stat " + path.string());
         }
 
-        // 设置用户和组信息
-        tmp.set_uid(file_stat.st_uid);
-        tmp.set_gid(file_stat.st_gid);
-        tmp.set_uname(getpwuid(file_stat.st_uid)->pw_name); // 获取用户名
-        tmp.set_gname(getgrgid(file_stat.st_gid)->gr_name); // 获取组名
+        // 填写包文件头，不包括软链接
+        fill_in_local_header(tmp, file_stat, entry.path(), path);
 
-        // 设置时间信息
-        tmp.refresh_creation_time();
-        tmp.set_last_modification_time(file_stat.st_mtime); // 最后修改时间
-        tmp.set_last_access_time(file_stat.st_atime);       // 最后访问时间
-
-        // 设置权限和文件类型
-        tmp.set_permissions(entry.symlink_status().permissions());
-        tmp.set_file_type(entry.symlink_status().type()); // 不跟随软链接获取文件类型
-
-        // 设置压缩和加密方法（当前均为None）
-        tmp.set_compression_method(local_file_header::compression_method::None);
-        tmp.set_encryption_method(local_file_header::encryption_method::None);
-        tmp.set_salt(std::array<uint8_t, 16>{}); // 设置空的盐值
-
-        // 设置文件大小信息
-        tmp.set_original_file_size(file_stat.st_size);
-        tmp.set_file_size(file_stat.st_size);
-
-        // 计算相对于根路径的文件名（不解析软链接）
-        std::string file_name = entry.path().lexically_relative(path);
-
-        tmp.set_file_name_length(file_name.size());
-        tmp.set_file_name(file_name);
-
-        // 根据文件类型处理不同类型的数据
-        switch (entry.symlink_status().type())
-        {
-        case fs::file_type::regular:   // 常规文件
-        case fs::file_type::block:     // 块设备文件
-        case fs::file_type::character: // 字符设备文件
-            {
-                // 读取文件内容到缓冲区
-                std::fstream file(entry.path(), std::ios::in | std::ios::binary);
-                auto buffer = std::make_unique<byte[]>(entry.file_size());
-                file.read(reinterpret_cast<char*>(buffer.get()), static_cast<long>(entry.file_size()));
-                tmp.set_data(std::move(buffer)); // 设置文件数据
-                tmp.set_link_name_length(0);
-                tmp.set_link_name(std::string{});
-                break;
-            }
-        case fs::file_type::fifo:     // 命名管道
-        case fs::file_type::directory: // 目录
-            {
-                // 目录和管道没有文件内容
-                tmp.set_file_size(0);
-                tmp.set_original_file_size(0);
-                tmp.set_link_name_length(0);
-                tmp.set_link_name(std::string{});
-                break;
-            }
-        case fs::file_type::symlink:  // 软链接
-            {
-                char buf[PATH_MAX];  // PATH_MAX定义了系统最大路径长度
-                ssize_t len;
-                // 读取软链接指向的目标路径
-                len = readlink(entry.path().c_str(), buf, sizeof(buf) - 1);
-                if (len == -1) {
-                    throw std::runtime_error("cannot readlink " + path.string());
-                }
-                buf[len] = '\0';  // 手动添加字符串结束符
-                tmp.set_link_name_length(len);
-                tmp.set_link_name(std::string(buf)); // 设置软链接目标
-                tmp.set_file_size(0);
-                tmp.set_original_file_size(0);
-                break;
-            }
-        case fs::file_type::none:     // 未知或不受支持的文件类型
-            throw std::runtime_error(entry.path().string() + " file type not supported");
-        default:
-            continue; // 跳过其他未处理的文件类型
-        }
+        // 根据文件类型处理不同类型的数据（非硬链接）
+        fill_in_local_header_link(tmp, entry, path);
 
         // 刷新当前本地数据包的CRC32和校验和
         tmp.refresh_crc_32();

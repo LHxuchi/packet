@@ -8,16 +8,28 @@
 #include <sys/types.h>
 #include <fstream>
 #include <map>
+#include <sys/sysmacros.h>
 
 #include "../../include/packet/packet.h"
+
+#include <cstring>
+#include <format>
+
 #include "../../include/utils/byte_conversion.h"
 #include "../../include/utils/crc_32.h"
 #include "../../include/file_system/get_entries.h"
 
 namespace
 {
+    /**
+     * @brief 抽取出来的一个填表过程，不值得复用，丢匿名空间就行
+     * @param packet 需要被填写的包文件
+     * @param file_stat 文件描述符
+     * @param path 文件当前绝对路径
+     * @param root_path 根路径
+     */
     void fill_in_local_header(data_packet::local_packet& packet,const struct stat& file_stat,
-        const std::filesystem::path& path , const std::filesystem::path& root_path)
+                              const std::filesystem::path& path , const std::filesystem::path& root_path)
     {
         namespace fs = std::filesystem;
         // 设置用户和组信息
@@ -51,17 +63,51 @@ namespace
         packet.set_file_name(file_name);
     }
 
+    /**
+     * @brief 处理不同文件的存储方式，不值得复用，丢匿名空间就行
+     * @param packet 包文件
+     * @param entry 指定访问目录
+     * @param root_path 根路径
+     * @param file_stat
+     */
     void fill_in_local_header_link(data_packet::local_packet& packet,
-        const std::filesystem::directory_entry& entry,
-        const std::filesystem::path& root_path)
+                                   const std::filesystem::directory_entry& entry,
+                                   const std::filesystem::path& root_path, const struct stat& file_stat)
     {
         namespace fs = std::filesystem;
         using namespace data_packet;
         switch (entry.symlink_status().type())
         {
-        case fs::file_type::regular:   // 常规文件
         case fs::file_type::block:     // 块设备文件
         case fs::file_type::character: // 字符设备文件
+            {
+                /* 在文件内容中存储主设备号与次设备号 */
+                auto buffer = std::make_unique<byte[]>(8); // 主设备号4字节次设备号4字节
+                uint32_t main_dev = major(file_stat.st_dev);
+                uint32_t sub_dev = minor(file_stat.st_dev);
+                four_byte bytes = to_bytes(main_dev);
+                buffer[0] = std::get<0>(bytes);
+                buffer[1] = std::get<1>(bytes);
+                buffer[2] = std::get<2>(bytes);
+                buffer[3] = std::get<3>(bytes);
+
+                bytes = to_bytes(sub_dev);
+                buffer[4] = std::get<0>(bytes);
+                buffer[5] = std::get<1>(bytes);
+                buffer[6] = std::get<2>(bytes);
+                buffer[7] = std::get<3>(bytes);
+
+                packet.set_data(std::move(buffer)); // 设置文件数据
+                // 文件长度设置为8字节
+                packet.set_original_file_size(8);
+                packet.set_file_size(8);
+
+                // 不存在链接名
+                packet.set_link_name_length(0);
+                packet.set_link_name(std::string{});
+                break;
+            }
+        case fs::file_type::regular:   // 常规文件
             {
                 // 读取文件内容到缓冲区
                 std::fstream file(entry.path(), std::ios::in | std::ios::binary);
@@ -199,8 +245,11 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
         if (files.find(file_stat.st_ino) != files.end())
         {
             // 处理硬链接
-            tmp.set_file_size(0);
-            tmp.set_original_file_size(0);
+            auto buffer = std::make_unique<byte[]>(11);
+            memcpy(buffer.get(), "\nhard_link\n", 11);
+            tmp.set_file_size(11);
+            tmp.set_original_file_size(11);
+            tmp.set_data(std::move(buffer));
             tmp.set_link_name_length(files.at(file_stat.st_ino).string().size());
             tmp.set_link_name(files.at(file_stat.st_ino).string());
         }
@@ -209,7 +258,7 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
             // 记录inode以及其对应路径
             files.insert({file_stat.st_ino,tmp.info().get_file_name()});
             // 根据文件类型处理不同类型的数据（非硬链接）
-            fill_in_local_header_link(tmp, entry, path);
+            fill_in_local_header_link(tmp, entry, path, file_stat);
         }
 
         // 刷新当前本地数据包的CRC32和校验和
@@ -232,6 +281,13 @@ data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
     return pkt;
 }
 
+
+/**
+ * @brief 流式输出
+ * @param os 指定输出流
+ * @param packet *this
+ * @return 指定输出流
+ */
 std::ostream& data_packet::operator<<(std::ostream& os, const packet& packet)
 {
     os.write(packet.info().get_buffer().get(),static_cast<long>(packet.info().header_size()));
@@ -246,6 +302,12 @@ std::ostream& data_packet::operator<<(std::ostream& os, const packet& packet)
     return os;
 }
 
+/**
+ * @brief 流式输入
+ * @param is 指定输入流
+ * @param packet *this
+ * @return 指定输入流
+ */
 std::istream& data_packet::operator>>(std::istream& is, packet& packet)
 {
     std::unique_ptr<byte[]> buffer{nullptr};
@@ -301,9 +363,105 @@ std::istream& data_packet::operator>>(std::istream& is, packet& packet)
     return is;
 }
 
-data_packet::packet data_packet::unpack_packet(const std::filesystem::path& path)
+void data_packet::unpack_packet(const std::filesystem::path& path, const packet& pkt)
 {
-    packet pkt;
+    namespace fs = std::filesystem;
 
-    return pkt;
+    // 优先还原目录结构
+    for (const auto& local_pkt : pkt.packets())
+    {
+        if (local_pkt.info().get_file_type() == fs::file_type::directory)
+        {
+            fs::create_directory(path / local_pkt.info().get_file_name());
+            fs::permissions(path / local_pkt.info().get_file_name(),local_pkt.info().get_permissions());
+        }
+    }
+
+    // 还原正常文件
+    for (const auto& local_pkt : pkt.packets())
+    {
+        if (local_pkt.info().get_link_name_length() > 0 || local_pkt.info().get_file_type() == fs::file_type::directory)
+        {
+            continue;
+        }
+        switch (local_pkt.info().get_file_type())
+        {
+        case fs::file_type::regular:
+            {
+                // 创建文件并写入数据
+                std::ofstream file(path / local_pkt.info().get_file_name(), std::ios::binary);
+                file.write(local_pkt.get_data().get(), static_cast<long>(local_pkt.info().get_file_size()));
+                file.close();
+
+                // 设置文件权限
+                fs::permissions(path / local_pkt.info().get_file_name(),local_pkt.info().get_permissions());
+                break;
+            }
+        case fs::file_type::character:
+        case fs::file_type::block:
+            {
+                // 读取主设备号与次设备号
+                auto buffer = local_pkt.get_data().get();
+                uint32_t main_dev = make_dword({buffer[0],buffer[1],buffer[2],buffer[3]});
+                uint32_t sub_dev = make_dword({buffer[4],buffer[5],buffer[6],buffer[7]});
+
+                // 读取文件名
+                auto file_name = (path / local_pkt.info().get_file_name()).string();
+
+                // 确认文件类型
+                int type = local_pkt.info().get_file_type() == fs::file_type::character? S_IFCHR : S_IFBLK;
+
+                // 创建设备文件
+                mknod(file_name.c_str(), type, makedev(main_dev, sub_dev));
+
+                // 设置权限
+                fs::permissions(file_name,local_pkt.info().get_permissions());
+
+                break;
+            }
+        case fs::file_type::fifo:
+            {
+                auto file_name = (path / local_pkt.info().get_file_name()).string();
+                mkfifo(file_name.c_str(), 0000);
+                fs::permissions(file_name,local_pkt.info().get_permissions());
+                break;
+            }
+        default:
+            throw std::runtime_error("File type not recognized " + local_pkt.info().get_file_name());
+        }
+    }
+
+    // 还原硬链接关系
+    for (const auto& local_pkt : pkt.packets())
+    {
+        if (local_pkt.info().get_link_name_length() <= 0)
+        {
+            continue;
+        }
+        if (local_pkt.info().get_file_size() > 0)
+        {
+            // 还原硬链接
+            auto target_name = path / local_pkt.info().get_link_name();
+            auto link_name = path / local_pkt.info().get_file_name();
+            fs::create_hard_link(target_name,link_name);
+            fs::permissions(link_name,local_pkt.info().get_permissions());
+        }
+    }
+
+    // 还原软链接
+    for (const auto& local_pkt : pkt.packets())
+    {
+        if (local_pkt.info().get_link_name_length() <= 0)
+        {
+            continue;
+        }
+        if (local_pkt.info().get_file_size() == 0)
+        {
+            // 还原软链接
+            auto target_name = path / local_pkt.info().get_link_name();
+            auto link_name = path / local_pkt.info().get_file_name();
+            fs::create_symlink(target_name,link_name);
+            fs::permissions(link_name,local_pkt.info().get_permissions());
+        }
+    }
 }

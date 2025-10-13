@@ -112,8 +112,21 @@ namespace data_packet
         void set_header_buffer(const char* buffer){_header.set_buffer(buffer);}
 
 
+        /**
+         * @brief 流式输出
+         * @param os 指定输出流
+         * @param packet *this
+         * @return 指定输出流
+         */
         friend std::ostream& operator<<(std::ostream& os, const packet& packet);
 
+
+        /**
+         * @brief 流式输入
+         * @param is 指定输入流
+         * @param packet *this
+         * @return 指定输入流
+         */
         friend std::istream& operator>>(std::istream& is, packet& packet);
 
     private:
@@ -131,9 +144,9 @@ namespace data_packet
     /**
      * @brief 将指定路径的已打包文件解包
      * @param path 指定路径
-     * @return 文件包
+     * @param pkt 需要解包的文件包
      */
-    packet unpack_packet(const std::filesystem::path& path);
+    void unpack_packet(const std::filesystem::path& path, const packet& pkt);
 
 
 

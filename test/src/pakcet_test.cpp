@@ -34,6 +34,36 @@ TEST_CASE("verify packet content and structure", "[packet]")
 
     auto test_path = fs::path("./mytest");
     test_path = fs::canonical(test_path);
+
+    // 定义每个文件对应的写入内容（键为相对路径，值为内容）
+    std::map<std::string, std::string> file_contents = {
+        {"test1.txt", "Content for root test file"},
+        {".hidden_file", "Content for hidden file"},
+        {"dir1/test1.txt", "Content for dir1 test file"},
+        {"dir2/test2.txt", "Content for dir2 test file"},
+        {".hidden_dir/config", "Content for hidden dir config file"}
+    };
+
+    // 遍历所有需要写入内容的文件
+    for (const auto& [rel_path, content] : file_contents) {
+        // 构建完整路径
+        fs::path full_path = test_path / rel_path;
+
+        // 检查文件是否存在且为普通文件
+        if (fs::exists(full_path) && fs::is_regular_file(full_path)) {
+            // 尝试打开文件并写入内容
+            std::ofstream ofs(full_path);
+            CHECK(ofs.is_open());
+
+            ofs << content;
+            ofs.close();
+
+        } else {
+            FAIL("File not found or not a regular file: " << full_path.string());
+        }
+    }
+
+    // 打包
     auto pkt = dp::make_packet(test_path);
 
     // 验证文件总数（与现有测试呼应，确认目录结构解析正确）
@@ -48,6 +78,9 @@ TEST_CASE("verify packet content and structure", "[packet]")
     // 验证总文件大小和原始文件大小为正数
     CHECK(pkt.info().get_file_size() >= 0);
     CHECK(pkt.info().get_original_file_size() >= 0);
+
+
+
 
     // 验证特定文件是否被正确包含
     SECTION("check specific files are included")
@@ -104,8 +137,8 @@ TEST_CASE("verify packet content and structure", "[packet]")
             if (p.info().get_file_name() == "hard_link_file" && p.info().get_link_name_length() > 0)
             {
                 hard_link_found = true;
-                CHECK(p.info().get_original_file_size() == 0);
-                CHECK(p.info().get_file_size() == 0);
+                CHECK(p.info().get_original_file_size() == 11);
+                CHECK(p.info().get_file_size() == 11);
                 CHECK(p.info().get_link_name_length() > 0);
                 CHECK(p.info().get_link_name() == "test1.txt");
                 break;
@@ -113,8 +146,8 @@ TEST_CASE("verify packet content and structure", "[packet]")
             if (p.info().get_file_name() == "test1.txt" && p.info().get_link_name_length() > 0)
             {
                 hard_link_found = true;
-                CHECK(p.info().get_original_file_size() == 0);
-                CHECK(p.info().get_file_size() == 0);
+                CHECK(p.info().get_original_file_size() == 11);
+                CHECK(p.info().get_file_size() == 11);
                 CHECK(p.info().get_link_name_length() > 0);
                 CHECK(p.info().get_link_name() == "hard_link_file");
                 break;
@@ -243,6 +276,22 @@ TEST_CASE("verify packet content and structure", "[packet]")
             CHECK(in_pkt.packets()[i].info().get_checksum() == pkt.packets()[i].info().get_checksum());
             CHECK(in_pkt.packets()[i].info().get_crc_32() == pkt.packets()[i].info().get_crc_32());
         }
+    }
+
+    SECTION("unpack")
+    {
+        fs::path unpack_path = R"(/home/hyh/test)";
+        fs::create_directory(unpack_path);
+        dp::unpack_packet(unpack_path,pkt);
+
+        for (const auto& [name,content] : file_contents)
+        {
+            std::ifstream file(unpack_path/name);
+            std::string input_string{std::istreambuf_iterator<char>(file),std::istreambuf_iterator<char>()};
+            CHECK(input_string == content);
+        }
+
+        fs::remove_all(unpack_path);
     }
 
     system("rm -rf mytest");

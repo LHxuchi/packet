@@ -68,7 +68,7 @@ namespace
      * @param packet 包文件
      * @param entry 指定访问目录
      * @param root_path 根路径
-     * @param file_stat
+     * @param file_stat 文件描述符
      */
     void fill_in_local_header_link(data_packet::local_packet& packet,
                                    const std::filesystem::directory_entry& entry,
@@ -206,20 +206,21 @@ void data_packet::packet::refresh_crc_32()
 /**
  * @brief 根据指定路径创建数据包
  * @param path 要打包的文件或目录路径
+ * @param get_entries
  * @return 包含路径下所有文件信息的数据包
  * @throws std::runtime_error 当无法获取文件状态或读取软链接时抛出异常
  *
  * 该函数遍历指定路径下的所有条目（文件、目录、软链接等），
  * 为每个条目创建本地数据包，收集文件属性、权限、内容等信息
  */
-data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
+data_packet::packet data_packet::make_packet(const std::filesystem::path& path, const get_entries_t& get_entries)
 {
     namespace fs = std::filesystem;
 
     packet pkt; // 创建主数据包
 
     // 获取路径下的所有条目（不跟随软链接）
-    auto entries = get_entries(path);
+    auto entries = get_entries(path,[](const std::filesystem::directory_entry&){return false;});
 
     // 预留空间以避免多次重新分配
     pkt.packets().reserve(entries.size());

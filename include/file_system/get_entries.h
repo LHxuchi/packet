@@ -31,6 +31,8 @@ namespace data_packet
      */
     auto get_entries(const std::filesystem::path& path) -> std::multiset<std::filesystem::directory_entry>;
 
+    using filter_t = std::function<bool(const std::filesystem::directory_entry&)>;
+
     /**
      * @brief 根据输入的指定路径输出路径下筛选过的所有文件
      * @param path 指定路径

@@ -6,6 +6,8 @@
 #define DATA_BACK_UP_PACKET_H
 
 #include <vector>
+#include <functional>
+#include <set>
 
 #include "../header/file_header.h"
 #include "../local_packet/local_packet.h"
@@ -140,12 +142,18 @@ namespace data_packet
         std::vector<local_packet> _packets{};
     };
 
+
+    /***/
+    using get_entries_t = std::function<std::multiset<std::filesystem::directory_entry>(const std::filesystem::path& path,
+                     const std::function<bool(const std::filesystem::directory_entry&)>& filter)>;
+
     /**
      * @brief 将指定路径下的文件打包
      * @param path 指定路径
+     * @param get_entries
      * @return 文件包
      */
-    packet make_packet(const std::filesystem::path& path);
+    packet make_packet(const std::filesystem::path& path, const get_entries_t& get_entries);
 
     /**
      * @brief 将指定路径的已打包文件解包

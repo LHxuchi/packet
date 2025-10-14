@@ -9,6 +9,7 @@
 #include <catch2/catch_session.hpp>
 
 #include "../../include/packet/packet.h"
+#include "file_system/get_entries.h"
 
 TEST_CASE("verify packet content and structure", "[packet]")
 {
@@ -64,7 +65,9 @@ TEST_CASE("verify packet content and structure", "[packet]")
     }
 
     // 打包
-    auto pkt = dp::make_packet(test_path);
+    auto pkt = dp::make_packet(test_path,
+        [](const fs::path& path,const dp::filter_t& filter)
+        {return dp::get_entries(path,filter);});
 
     // 验证文件总数（与现有测试呼应，确认目录结构解析正确）
     CHECK(pkt.info().get_file_number() == 10);

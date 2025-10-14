@@ -101,5 +101,42 @@ TEST_CASE("Linux get_entries tests", "[data_packet][file_system]") {
         CHECK(entries.count(fs::directory_entry(link_path)) == 1);
     }
 
+    SECTION("Filter test")
+    {
+        auto entries = get_entries(test_dir,
+            [](const std::filesystem::directory_entry& entry){return false;});
+        // 验证总数：3个普通文件 + 2个隐藏文件 + 1个目录
+        REQUIRE(entries.size() == 6);
+
+        // 验证普通文件存在
+        CHECK(entries.count(fs::directory_entry(test_dir / "normal_file1.txt")) == 1);
+        CHECK(entries.count(fs::directory_entry(test_dir / "normal_file2.dat")) == 1);
+
+        // 验证隐藏文件存在
+        CHECK(entries.count(fs::directory_entry(test_dir / ".hidden_file")) == 1);
+        CHECK(entries.count(fs::directory_entry(test_dir / ".config")) == 1);
+
+        // 验证子目录
+        CHECK(entries.count(fs::directory_entry(test_dir / "subdirectory")) == 1);
+        CHECK(entries.count(fs::directory_entry(test_dir / "subdirectory" / "subfile.txt")) == 1);
+
+        entries = get_entries(test_dir,
+            [](const std::filesystem::directory_entry& entry)
+            {return entry.path().string().find(".txt") != std::string::npos; });
+
+        // 验证普通文件部分存在
+        CHECK(entries.count(fs::directory_entry(test_dir / "normal_file1.txt")) == 0);
+        CHECK(entries.count(fs::directory_entry(test_dir / "normal_file2.dat")) == 1);
+
+        // 验证隐藏文件存在
+        CHECK(entries.count(fs::directory_entry(test_dir / ".hidden_file")) == 1);
+        CHECK(entries.count(fs::directory_entry(test_dir / ".config")) == 1);
+
+        // 验证子目录，文件部分存在
+        CHECK(entries.count(fs::directory_entry(test_dir / "subdirectory")) == 1);
+        CHECK(entries.count(fs::directory_entry(test_dir / "subdirectory" / "subfile.txt")) == 0);
+
+    }
+
     cleanup();
 }

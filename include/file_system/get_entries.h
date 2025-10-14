@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <set>
+#include <functional>
 
 namespace data_packet
 {
@@ -29,6 +30,16 @@ namespace data_packet
      * @return 文件集合
      */
     auto get_entries(const std::filesystem::path& path) -> std::multiset<std::filesystem::directory_entry>;
+
+    /**
+     * @brief 根据输入的指定路径输出路径下筛选过的所有文件
+     * @param path 指定路径
+     * @param filter 过滤器
+     * @return 文件集合
+     */
+    auto get_entries(const std::filesystem::path& path,
+                     const std::function<bool(const std::filesystem::directory_entry&)>& filter)
+    -> std::multiset<std::filesystem::directory_entry>;
 
     /**
      * @brief 判断当前路径是否为硬链接

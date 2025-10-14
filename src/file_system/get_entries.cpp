@@ -12,6 +12,7 @@ bool data_packet::is_hard_link(const std::filesystem::path& path)
     return !entry.is_directory()&&entry.hard_link_count() >= 2;
 }
 
+/* 加个filter */
 auto data_packet::get_entries(const std::filesystem::path& path) -> std::multiset<std::filesystem::directory_entry>
 {
     namespace fs = std::filesystem;
@@ -44,5 +45,21 @@ auto data_packet::get_entries(const std::filesystem::path& path) -> std::multise
         }
         entries_queue.pop();
     }
+    return entries;
+}
+
+auto data_packet::get_entries(const std::filesystem::path& path,
+    const std::function<bool(const std::filesystem::directory_entry&)>& filter) -> std::multiset<std::filesystem::
+    directory_entry>
+{
+    auto entries = get_entries(path);
+    for (auto it = entries.begin(); it != entries.end(); ++it)
+    {
+        if (filter(*it))
+        {
+            it = entries.erase(it);
+        }
+    }
+
     return entries;
 }

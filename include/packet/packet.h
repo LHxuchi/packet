@@ -12,6 +12,12 @@
 
 namespace data_packet
 {
+    class packet;
+
+    std::ostream& operator<<(std::ostream& os, const packet& packet);
+
+    std::istream& operator>>(std::istream& is, packet& packet);
+
     class packet
     {
     public:

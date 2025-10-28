@@ -6,7 +6,6 @@
 #include <iterator>
 #include <vector>
 #include <string>
-#include <queue>
 #include <cstring>
 #include <bitset>
 namespace data_packet
@@ -99,6 +98,11 @@ namespace data_packet
          * @return 树的头指针
          */
         std::unique_ptr<Huffman_tn> Create_Huffman_Tree();
+        /**
+         * @brief 对哈夫曼树进行编码，递归函数
+         * @param node 哈夫曼树节指针，用unique_ptr的get获取
+         * @param prefix 该节点的哈夫曼编码
+         */
         void encoding_dfs(Huffman_tn* node, std::string prefix);
 
         qword times[256];//词频表
@@ -106,7 +110,7 @@ namespace data_packet
     };
 
     /**
-  * @brief 接受前向输出迭代器指定压缩或加密数据范围，区间为[begin,end)
+  * @brief 进行哈夫曼压缩算法，传入待压缩数据迭代器的头尾
   * @param begin 闭区间起始位置
   * @param end 开区间结束位置
   * @return 已压缩的数据及其长度
@@ -115,17 +119,27 @@ namespace data_packet
     std::pair<std::unique_ptr<byte[]>, size_t> Huffman_compress(const Iter& begin, const Iter& end);
 
     /**
-      * @brief 接受前向输出迭代器指定压缩或加密数据范围，区间为[begin,begin+size)
+      * @brief 进行哈夫曼压缩算法，传入待压缩数据迭代器的头和该迭代器的长度
       * @param begin 闭区间起始位置
       * @param size 区间大小
       * @return 已压缩的数据及其长度
       */
     template<typename Iter>
     std::pair<std::unique_ptr<byte[]>, size_t> Huffman_compress(const Iter& begin, size_t buffer_size);
-
+    /**
+      * @brief 进行哈夫曼解压算法，传入待压缩数据迭代器的头和该迭代器的长度
+      * @param begin 闭区间起始位置
+      * @param size 区间大小
+      * @return 已解压的数据及其长度
+      */
     template<typename Iter>
     std::pair<std::unique_ptr<byte[]>, size_t> Huffman_decompress(const Iter& begin, const Iter& end);
-
+    /**
+      * @brief 进行哈夫曼解压算法，传入待压缩数据迭代器的头和该迭代器的长度
+      * @param begin 闭区间起始位置
+      * @param size 区间大小
+      * @return 已解压的数据及其长度
+      */
     template<typename Iter>
     std::pair<std::unique_ptr<byte[]>, size_t> Huffman_decompress(const Iter& begin, size_t buffer_size);
 
@@ -136,12 +150,14 @@ namespace data_packet
     {
         return Huffman_compress(begin, size_t(end - begin));
     }
+
     template<typename Iter>
     std::pair<std::unique_ptr<data_packet::byte[]>, size_t> data_packet::Huffman_compress(const Iter& begin, size_t buffer_size)
     {
         static_assert(sizeof(typename std::iterator_traits<Iter>::value_type) == sizeof(uint8_t), "Element type must be 1 byte");
         data_packet::Huffman huffman;
         auto it = begin;
+        //记录词频表
         for (size_t i = 0; i < buffer_size; i++)
         {
             huffman.times[(uint8_t)*it++]++;
@@ -216,10 +232,16 @@ namespace data_packet
     template <typename Iter>
     std::pair<std::unique_ptr<data_packet::byte[]>, size_t> data_packet::Huffman_decompress(const Iter& begin, size_t buffer_size)
     {
+        //传入迭代器的类型检查
         static_assert(sizeof(typename std::iterator_traits<Iter>::value_type) == sizeof(uint8_t), "Element type must be 1 byte");
+        
         Huffman decoding_huffman;
+        
         auto it = begin;
+        //压缩数据流第一字节为padding_length,解码
         byte padding_length = *it++;
+        
+        //从压缩数据流中还原解压表
         for (size_t i = 0; i < 256; i++)
         {
             for (size_t j = 0; j < 8; j++)
@@ -229,8 +251,10 @@ namespace data_packet
             }
         }
         
+        //暂存压缩数据的哈弗曼编码序列
         std::string encoded_stream;
-
+        
+        //特判，如果大小 小于等于2049，说明压缩数据为空。
         if(buffer_size>=2050)
         {
             for (size_t i = 0; i < buffer_size - 2049-1; i++)
@@ -243,11 +267,15 @@ namespace data_packet
                 encoded_stream += tmp.to_string().substr(0,8-padding_length);
             }
         }
-
+        //建哈夫曼树
         std::unique_ptr<Huffman::Huffman_tn> huffman_tree_head = decoding_huffman.Create_Huffman_Tree();
+        
+        //解码流
         std::string decoding_stream;
-        Huffman::Huffman_tn* huffman_tree_node = huffman_tree_head.get();//遍历树指针
-
+        //遍历树指针
+        Huffman::Huffman_tn* huffman_tree_node = huffman_tree_head.get();
+        
+        //解码数据，通过移动哈夫曼树的指针找到该编码的字符
         for (size_t i = 0; i < encoded_stream.size(); i++)
         {
             if (encoded_stream[i] == '0')
@@ -264,13 +292,17 @@ namespace data_packet
                 huffman_tree_node = huffman_tree_head.get();
             }
         }
+        //释放哈夫曼树资源
         huffman_tree_node = nullptr;
         huffman_tree_head.release();
+        
+        //返回值赋值
         std::unique_ptr<byte[]> decompressed_data = std::make_unique<byte[]>(decoding_stream.size());
         for (size_t i = 0; i < decoding_stream.size(); i++)
         {
             decompressed_data[i] = (byte)decoding_stream[i];
         }
+
         return std::pair<std::unique_ptr<byte[]>, size_t>(std::move(decompressed_data), decoding_stream.size());
     }
 

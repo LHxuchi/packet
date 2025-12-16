@@ -210,7 +210,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
     SECTION("write and read")
     {
         // 写入数据包到文件
-        std::fstream my_file("/home/hyh/CLionProjects/packet/bin/packet.pkt",
+        std::fstream my_file("/home/hzh/packet/bin/packet.pkt",
             std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
 
         if (!my_file.is_open())
@@ -283,7 +283,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
 
     SECTION("unpack")
     {
-        fs::path unpack_path = R"(/home/hyh/test)";
+        fs::path unpack_path = R"(/home/hzh/test)";
         fs::create_directory(unpack_path);
         dp::unpack_packet(unpack_path,pkt);
 

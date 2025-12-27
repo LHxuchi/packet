@@ -7,7 +7,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <ctime>
 
 // 命名空间别名简化代码
 namespace fs = std::filesystem;
@@ -17,7 +16,7 @@ namespace dp = data_packet;
 TEST_CASE("DataBackup Core Functionality Tests (Destination as File Path + Pre-Cleanup)", "[backup][restore][info]") {
     // ========== 新增：测试前置清理逻辑（核心修改点） ==========
     // 定义唯一临时目录路径（与后续测试目录一致）
-    fs::path temp_root = fs::temp_directory_path() / ("data_backup_test_" + std::to_string(std::time(nullptr)));
+    fs::path temp_root = fs::temp_directory_path() / "data_backup_test" ;
     // 前置清理：检查如果临时目录已存在，先递归删除所有内容
     if (fs::exists(temp_root)) {
         REQUIRE_NOTHROW(fs::remove_all(temp_root)); // 强制删除目录及所有子文件/子目录
@@ -177,13 +176,4 @@ TEST_CASE("DataBackup Core Functionality Tests (Destination as File Path + Pre-C
         REQUIRE(wrong_pwd_restore_result != "OK");
     }
 
-    // ========== 测试后置清理：删除临时目录 ==========
-    auto clean_up = [&]() {
-        if (fs::exists(temp_root)) {
-            // 强制删除目录（包含所有测试文件和子目录）
-            fs::remove_all(temp_root);
-        }
-    };
-    clean_up(); // 执行清理
-    REQUIRE_FALSE(fs::exists(temp_root)); // 验证清理成功
 }

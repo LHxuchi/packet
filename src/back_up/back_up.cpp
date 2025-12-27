@@ -98,6 +98,7 @@ std::string data_packet::back_up(
         auto pkt = make_packet(source);
         std::set<std::string> filtered_files;
         auto begin = not_including_files.begin(),end = not_including_files.begin();
+
         while (end != not_including_files.end())
         {
             if (*end == '\n')
@@ -106,6 +107,10 @@ std::string data_packet::back_up(
                 begin = end + 1;
             }
             ++end;
+        }
+        if (begin != end)
+        {
+            filtered_files.insert({begin, end});
         }
 
         for (auto it = pkt.packets().begin(); it != pkt.packets().end();)

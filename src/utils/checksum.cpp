@@ -6,7 +6,7 @@
 
 uint32_t data_packet::calculate_checksum(const std::vector<std::pair<const char*, size_t>>& datas)
 {
-    uint32_t calculated_checksum = 0;
+    uint32_t calculated_checksum = 0xffffffff;
     for (const auto& data : datas)
     {
         for (size_t i = 0; i < data.second; i++)

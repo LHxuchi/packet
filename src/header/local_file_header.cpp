@@ -387,6 +387,8 @@ namespace data_packet
             return compression_method::None;
         case 1:
             return compression_method::LZ77;
+        case 2:
+            return compression_method::HUFFMAN;
         default:
             return compression_method::None;
         }
@@ -403,6 +405,9 @@ namespace data_packet
             break;
         case compression_method::LZ77:
             compression_method_bits = 1;
+            break;
+        case compression_method::HUFFMAN:
+            compression_method_bits = 2;
             break;
         default:
             compression_method_bits = 0;
@@ -423,6 +428,8 @@ namespace data_packet
             return encryption_method::None;
         case 1:
             return encryption_method::my_method;
+        case 2:
+            return encryption_method::AES_256_CBC;
         default:
             // 对于未知值，返回默认的None
             return encryption_method::None;
@@ -441,6 +448,9 @@ namespace data_packet
             break;
         case encryption_method::my_method:
             encryption_method_bits = 1;
+            break;
+        case encryption_method::AES_256_CBC:
+            encryption_method_bits = 2;
             break;
         default:
             encryption_method_bits = 0;

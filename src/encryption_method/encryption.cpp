@@ -1,4 +1,30 @@
 #include "../../include/encryption_method/encryption.h"
+std::string encryption::pkcs7_pad(const std::string& data, size_t block_size)
+{
+    size_t pad_len = block_size - (data.size() % block_size);
+    std::string padded = data;
+    padded.append(pad_len, static_cast<char>(pad_len));
+    return padded;
+}
+std::string encryption::pkcs7_unpad(const std::string& data) {
+    if (data.empty()) return "";
+    char pad_len = data.back();
+    if (pad_len < 1 || pad_len > AES_BLOCK_SIZE) return "";
+    // 校验填充合法性（增强安全性）
+    for (size_t i = data.size() - pad_len; i < data.size(); ++i) {
+        if (data[i] != pad_len) return "";
+    }
+    return data.substr(0, data.size() - static_cast<size_t>(pad_len));
+}
+bool encryption::generate_aes_key(const std::string& password, unsigned char* key) {
+    if (!key) return false;
+    SHA256(reinterpret_cast<const unsigned char*>(password.c_str()), password.size(), key);
+    return true;
+}
+bool encryption::generate_iv(unsigned char* iv) {
+    if (!iv) return false;
+    return RAND_bytes(iv, AES_BLOCK_SIZE) == 1;
+}
 bool encryption::aes_encrypt(const std::string& plaintext, const std::string& password, std::string& ciphertext) 
 {
     ERR_clear_error(); // 操作前清空错误栈，避免残留错误干扰
@@ -134,47 +160,3 @@ bool encryption::aes_decrypt(const std::string& ciphertext, const std::string& p
     return true;
 }
 
-
-#if 0
-// 测试示例
-int main() {
-    // 初始化OpenSSL错误字符串
-    ERR_load_crypto_strings();
-
-    // 测试数据
-    std::string original_data = "这是需要备份的敏感数据：1234567890，测试中文！";
-    std::string password = "MySecurePassword123!";
-    std::string ciphertext, decrypted_data;
-
-    // 加密
-    if (aes_encrypt(original_data, password, ciphertext)) {
-        std::cout << "加密成功，密文长度：" << ciphertext.size() << " 字节" << std::endl;
-    } else {
-        std::cerr << "加密失败" << std::endl;
-        ERR_free_strings();
-        return -1;
-    }
-
-    // 解密
-    if (aes_decrypt(ciphertext, password, decrypted_data)) {
-        std::cout << "解密成功，明文：" << decrypted_data << std::endl;
-    } else {
-        std::cerr << "解密失败" << std::endl;
-        ERR_free_strings();
-        return -1;
-    }
-
-    // 验证
-    if (original_data == decrypted_data) {
-        std::cout << "数据验证通过：加密解密一致" << std::endl;
-    } else {
-        std::cerr << "数据验证失败：加密解密不一致" << std::endl;
-        ERR_free_strings();
-        return -1;
-    }
-
-    // 清理错误字符串
-    ERR_free_strings();
-    return 0;
-}
-#endif

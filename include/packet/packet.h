@@ -150,10 +150,9 @@ namespace data_packet
     /**
      * @brief 将指定路径下的文件打包
      * @param path 指定路径
-     * @param get_entries
      * @return 文件包
      */
-    packet make_packet(const std::filesystem::path& path, const get_entries_t& get_entries);
+    packet make_packet(const std::filesystem::path& path);
 
     /**
      * @brief 将指定路径的已打包文件解包
@@ -161,8 +160,6 @@ namespace data_packet
      * @param pkt 需要解包的文件包
      */
     void unpack_packet(const std::filesystem::path& path, const packet& pkt);
-
-
 
 } // data_packet
 

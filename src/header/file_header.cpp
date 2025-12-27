@@ -200,6 +200,10 @@ namespace data_packet
         checksum[3] = std::get<3>(bytes);
     }
 
+    /**
+     * @brief 使用校验和校验是否存在错误
+     * @return 校验结果
+     */
     bool file_header::check() const
     {
         auto tmp_checksum = get_checksum();

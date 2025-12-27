@@ -44,6 +44,8 @@ TEST_CASE("Data Packet Encryption/Decryption", "[data_packet]") {
         auto decrypted = data_packet::decrypt(encrypted.first.get(), encrypted.second, "wrong_pass");
         REQUIRE(decrypted.first == nullptr);
         REQUIRE(decrypted.second == 0);
+        std::cout<<"wrong password decrypt test passed."<< std::endl;
+
     }
     SECTION("文件加密解密测试")
     {

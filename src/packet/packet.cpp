@@ -206,14 +206,13 @@ void data_packet::packet::refresh_crc_32()
 /**
  * @brief 根据指定路径创建数据包
  * @param path 要打包的文件或目录路径
- * @param get_entries
  * @return 包含路径下所有文件信息的数据包
  * @throws std::runtime_error 当无法获取文件状态或读取软链接时抛出异常
  *
  * 该函数遍历指定路径下的所有条目（文件、目录、软链接等），
  * 为每个条目创建本地数据包，收集文件属性、权限、内容等信息
  */
-data_packet::packet data_packet::make_packet(const std::filesystem::path& path, const get_entries_t& get_entries)
+data_packet::packet data_packet::make_packet(const std::filesystem::path& path)
 {
     namespace fs = std::filesystem;
 

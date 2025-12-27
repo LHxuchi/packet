@@ -80,5 +80,5 @@ TEST_CASE("checksum","[utils]")
 
     auto result = calculate_checksum(datas);
 
-    REQUIRE(result == 0x04030201);
+    REQUIRE(result == 0xfbfcfdfe);
 }

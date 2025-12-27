@@ -33,7 +33,8 @@ namespace data_packet
         enum class compression_method
         {
             None = 0,  ///< 无压缩
-            LZ77       ///< 使用LZ77压缩算法
+            LZ77 = 1,  ///< 使用LZ77压缩算法
+            HUFFMAN = 2  ///< 使用哈夫曼压缩
         };
 
         /**
@@ -43,7 +44,8 @@ namespace data_packet
         enum class encryption_method
         {
             None = 0,   ///< 不加密
-            my_method   ///< 自定义加密方法
+            my_method = 1,   ///< 自定义加密方法
+            AES_256_CBC = 2 ///< AES 256加密
         };
 
         /**

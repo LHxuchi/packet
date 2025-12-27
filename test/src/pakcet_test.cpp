@@ -65,9 +65,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
     }
 
     // 打包
-    auto pkt = dp::make_packet(test_path,
-        [](const fs::path& path,const dp::filter_t& filter)
-        {return dp::get_entries(path,filter);});
+    auto pkt = dp::make_packet(test_path);
 
     // 验证文件总数（与现有测试呼应，确认目录结构解析正确）
     CHECK(pkt.info().get_file_number() == 10);
@@ -210,7 +208,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
     SECTION("write and read")
     {
         // 写入数据包到文件
-        std::fstream my_file("/home/hzh/packet/bin/packet.pkt",
+        std::fstream my_file("/home/hyh/CLionProjects/packet/bin/packet.pkt",
             std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
 
         if (!my_file.is_open())
@@ -283,7 +281,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
 
     SECTION("unpack")
     {
-        fs::path unpack_path = R"(/home/hzh/test)";
+        fs::path unpack_path = R"(/home/hyh/test)";
         fs::create_directory(unpack_path);
         dp::unpack_packet(unpack_path,pkt);
 

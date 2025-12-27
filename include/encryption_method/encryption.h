@@ -1,3 +1,6 @@
+#ifndef ENCRYPTION_METHOD_ENCRYPTION_H
+#define ENCRYPTION_METHOD_ENCRYPTION_H
+
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -10,7 +13,8 @@
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
-namespace encryption{
+namespace encryption
+{
 // 兼容定义（若未定义）
 #ifndef AES_BLOCK_SIZE
 #define AES_BLOCK_SIZE 16
@@ -32,37 +36,16 @@ namespace encryption{
     } while (0)
 
 // PKCS7填充（补全到block_size的整数倍）
-std::string pkcs7_pad(const std::string& data, size_t block_size) {
-    size_t pad_len = block_size - (data.size() % block_size);
-    std::string padded = data;
-    padded.append(pad_len, static_cast<char>(pad_len));
-    return padded;
-}
+std::string pkcs7_pad(const std::string& data, size_t block_size) ;
 
 // 去除PKCS7填充
-std::string pkcs7_unpad(const std::string& data) {
-    if (data.empty()) return "";
-    char pad_len = data.back();
-    if (pad_len < 1 || pad_len > AES_BLOCK_SIZE) return "";
-    // 校验填充合法性（增强安全性）
-    for (size_t i = data.size() - pad_len; i < data.size(); ++i) {
-        if (data[i] != pad_len) return "";
-    }
-    return data.substr(0, data.size() - static_cast<size_t>(pad_len));
-}
+std::string pkcs7_unpad(const std::string& data) ;
 
 // 从密码生成AES-256密钥（SHA256哈希）
-bool generate_aes_key(const std::string& password, unsigned char* key) {
-    if (!key) return false;
-    SHA256(reinterpret_cast<const unsigned char*>(password.c_str()), password.size(), key);
-    return true;
-}
+bool generate_aes_key(const std::string& password, unsigned char* key);
 
 // 生成随机IV（16字节）
-bool generate_iv(unsigned char* iv) {
-    if (!iv) return false;
-    return RAND_bytes(iv, AES_BLOCK_SIZE) == 1;
-}
+bool generate_iv(unsigned char* iv) ;
 
 /**
  * AES-256-CBC加密（使用OpenSSL 3.x EVP高级接口）
@@ -119,7 +102,7 @@ namespace data_packet
         if(!encryption::aes_decrypt(ciphertext,password,plaintext))
         {
             std::cerr<<"fail to decrypt"<<std::endl;
-            return std::pair<std::unique_ptr<byte[]>,size_t>(nullptr,0);
+            return {nullptr, 0};
         }
         std::unique_ptr<byte[]> decrypted_data=std::make_unique<byte[]>(plaintext.size());
         const byte* plaintext_tmp=plaintext.data();
@@ -133,3 +116,5 @@ namespace data_packet
         return decrypt(begin,size_t(end-begin),password);
     }
 }
+
+#endif

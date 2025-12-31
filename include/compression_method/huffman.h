@@ -18,7 +18,12 @@ namespace data_packet
     //     qword Word_with_times[256] = {0};//字母对应ASCII码+出现次数（词频表）
     //     std::unique_ptr<byte[]> Compressed_data;//压缩后数据
     // };
-    
+    /**
+     * @brief 哈夫曼类，封装Huffman压缩的具体实现，将具体函数隐藏
+     * @class Huffman
+     * @param times 词频表
+     * @param Huffman_coding 字母对应的Huffman编码 
+     */
     class Huffman
     {
     public:

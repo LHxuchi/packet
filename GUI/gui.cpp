@@ -17,7 +17,6 @@
 #include <QProgressBar>
 #include <QHeaderView>
 #include <QInputDialog>
-
 #include <QThread>
 #include <QDebug>
 
@@ -391,8 +390,11 @@ private:
         metadataTree = new QTreeWidget();
         metadataTree->setColumnCount(2);
         metadataTree->setHeaderLabels({"元数据信息", "值"});
-        metadataTree->setColumnWidth(0, 150); 
-        metadataTree->header()->setStretchLastSection(true); 
+
+        metadataTree->setColumnWidth(0, 300); // 初始宽度150
+        metadataTree->header()->setSectionResizeMode(0, QHeaderView::Interactive); // 可手动拖+自适应
+        metadataTree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+       
         layout->addWidget(metadataTree);
 
         mainLayout->addWidget(metadataGroup);

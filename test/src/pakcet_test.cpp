@@ -174,7 +174,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
                 symlink_found = true;
                 CHECK(p.info().get_file_type() == fs::file_type::symlink);
                 // 验证符号链接目标正确
-                CHECK(p.info().get_link_name() == "test1.txt");
+                CHECK(p.info().get_link_name() == "/home/hyh/CLionProjects/packet/bin/mytest/test1.txt");
                 break;
             }
         }

@@ -130,7 +130,7 @@ namespace
             }
         case fs::file_type::symlink:  // 软链接
             {
-                auto link_name = fs::relative(entry.path(), root_path);
+                auto link_name = root_path / fs::relative(entry.path(), root_path);
                 packet.set_link_name_length(link_name.string().size());
                 packet.set_link_name(link_name.string());
                 packet.set_file_size(0);
@@ -367,9 +367,13 @@ void data_packet::unpack_packet(const std::filesystem::path& path, const packet&
 {
     namespace fs = std::filesystem;
 
-    // 优先还原目录结构
+    // 优先还原目录结构，若文件存在则删除
     for (const auto& local_pkt : pkt.packets())
     {
+        if (fs::exists(path / local_pkt.info().get_file_name()))
+        {
+            fs::remove_all(path / local_pkt.info().get_file_name());
+        }
         if (local_pkt.info().get_file_type() == fs::file_type::directory)
         {
             fs::create_directory(path / local_pkt.info().get_file_name());
@@ -457,7 +461,7 @@ void data_packet::unpack_packet(const std::filesystem::path& path, const packet&
         if (local_pkt.info().get_file_size() == 0)
         {
             // 还原软链接
-            auto target_name = path / local_pkt.info().get_link_name();
+            auto target_name = local_pkt.info().get_link_name();
             auto link_name = path / local_pkt.info().get_file_name();
             fs::create_symlink(target_name,link_name);
         }

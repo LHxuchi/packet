@@ -22,12 +22,14 @@ TEST_CASE("verify packet content and structure", "[packet]")
     system("mkdir mytest/dir2");
     system("mkdir mytest/.hidden_dir");
 
+
     // 创建文件
     system("touch mytest/test1.txt");
     system("touch mytest/.hidden_file");
     system("touch mytest/dir1/test1.txt");
     system("touch mytest/dir2/test2.txt");
     system("touch mytest/.hidden_dir/config");
+    system("touch mytest/test_long_file.txt");
 
     // 创建链接
     system("ln -s test1.txt mytest/symlink_file");
@@ -44,6 +46,11 @@ TEST_CASE("verify packet content and structure", "[packet]")
         {"dir2/test2.txt", "Content for dir2 test file"},
         {".hidden_dir/config", "Content for hidden dir config file"}
     };
+
+    std::ifstream ifs(R"(/home/hyh/CLionProjects/packet/test/static/test.txt)");
+    std::string long_content{std::istreambuf_iterator<char>(ifs),std::istreambuf_iterator<char>()};
+    file_contents.insert({"test_long_file.txt", long_content});
+
 
     // 遍历所有需要写入内容的文件
     for (const auto& [rel_path, content] : file_contents) {
@@ -68,7 +75,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
     auto pkt = dp::make_packet(test_path);
 
     // 验证文件总数（与现有测试呼应，确认目录结构解析正确）
-    CHECK(pkt.info().get_file_number() == 10);
+    CHECK(pkt.info().get_file_number() == 11);
 
     // 验证基本头信息有效性
     CHECK(pkt.info().get_version() != 0);  // 假设版本号已正确设置
@@ -96,7 +103,8 @@ TEST_CASE("verify packet content and structure", "[packet]")
             "test1.txt",
             ".hidden_dir",
             "dir1",
-            "dir2"
+            "dir2",
+            "test_long_file.txt"
         };
 
         // 检查每个预期文件是否存在于包中
@@ -107,7 +115,7 @@ TEST_CASE("verify packet content and structure", "[packet]")
             CHECK(ret);
             ++count;
         }
-        CHECK(count == 10);
+        CHECK(count == 11);
     }
 
     SECTION("check directory and fifo")
@@ -276,6 +284,9 @@ TEST_CASE("verify packet content and structure", "[packet]")
             // 校验值检验
             CHECK(in_pkt.packets()[i].info().get_checksum() == pkt.packets()[i].info().get_checksum());
             CHECK(in_pkt.packets()[i].info().get_crc_32() == pkt.packets()[i].info().get_crc_32());
+
+            // 权限校验
+            CHECK(in_pkt.packets()[i].info().get_permissions() == pkt.packets()[i].info().get_permissions());
         }
     }
 

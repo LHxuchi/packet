@@ -175,5 +175,4 @@ TEST_CASE("DataBackup Core Functionality Tests (Destination as File Path + Pre-C
         );
         REQUIRE(wrong_pwd_restore_result != "OK");
     }
-
 }

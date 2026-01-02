@@ -444,7 +444,6 @@ void data_packet::unpack_packet(const std::filesystem::path& path, const packet&
             auto target_name = path / local_pkt.info().get_link_name();
             auto link_name = path / local_pkt.info().get_file_name();
             fs::create_hard_link(target_name,link_name);
-            fs::permissions(link_name,local_pkt.info().get_permissions());
         }
     }
 
@@ -461,7 +460,6 @@ void data_packet::unpack_packet(const std::filesystem::path& path, const packet&
             auto target_name = path / local_pkt.info().get_link_name();
             auto link_name = path / local_pkt.info().get_file_name();
             fs::create_symlink(target_name,link_name);
-            fs::permissions(link_name,local_pkt.info().get_permissions());
         }
     }
 }

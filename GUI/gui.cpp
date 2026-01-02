@@ -98,7 +98,9 @@ private slots:
 
     // 更新文件列表
     void updateFileList() {
+        std::cout<<"列表更新："<<"\n";
         fileList->clear(); // 清空现有列表
+        fullFileList->clear();
         std::string dirStr = backupDirEdit->text().toStdString();
         
         // 校验目录有效性
@@ -106,22 +108,33 @@ private slots:
             return;
         }
 
-        // 前端实现：遍历目录下所有文件 + 筛选逻辑
+         // 前端实现：遍历目录下所有文件 + 筛选逻辑
         try {
-            // 遍历目录下所有条目（不递归）
+            // 第一步：先填充fullFileList（所有文件，初始状态为未勾选）
             for (const auto& entry : fs::directory_iterator(fs::path(dirStr))) {
-                // 应用筛选规则：返回true表示保留，false表示排除
+                std::string filePath = entry.path().string();
+                QListWidgetItem *fullItem = new QListWidgetItem(QString::fromStdString(filePath));
+
+                fullItem->setCheckState(Qt::Unchecked); // 初始默认不勾选
+                fullFileList->addItem(fullItem);
+
+                // 第二步：应用筛选规则，符合条件的加入fileList，并同步勾选状态
                 if (filterFile(entry)) {
-                    QListWidgetItem *item = new QListWidgetItem(
-                        QString::fromStdString(entry.path().string())
-                    );
-                    item->setCheckState(Qt::Checked);
+                    QListWidgetItem *item = new QListWidgetItem(QString::fromStdString(filePath));
+                    item->setCheckState(Qt::Checked); // 筛选后显示的文件默认勾选
                     fileList->addItem(item);
+                    // 同步fullFileList对应项为勾选
+                    fullItem->setCheckState(Qt::Checked);
                 }
             }
         } catch (const std::exception& e) {
             QMessageBox::critical(this, "错误", QString("无法加载文件列表: %1").arg(e.what()));
         }
+        std::cout<<"源目录项目数量:\n";
+        std::cout<<fullFileList->count()<<"\n";
+        std::cout<<"更新完毕，当前列表为："<<"\n";
+        for (int i = 0; i < fileList->count(); ++i) 
+            std::cout<<fileList->item(i)->text().toStdString()<<"\n";
     }
 
     // 执行备份
@@ -138,21 +151,44 @@ private slots:
 
         // 1. 收集过滤掉的文件路径
         std::vector<std::string> filteredFiles;
-        for (int i = 0; i < fileList->count(); ++i) {
-            QListWidgetItem *item = fileList->item(i);
-            if (item->checkState() == Qt::Unchecked) {
+        bool isEmptyBackup=true;
+        std::cout<<"源目录项目数量:\n";
+        std::cout<<fullFileList->count()<<"\n";
+        
+        for (int i = 0; i < fullFileList->count(); ++i) 
+        {
+            QListWidgetItem *item = fullFileList->item(i);
+            if(item->checkState()==Qt::Checked)
+                isEmptyBackup=false;
+            if (item->checkState() == Qt::Unchecked) 
+            {
                 filteredFiles.push_back(item->text().toStdString());
+                if(fs::is_directory(item->text().toStdString()))
+                {
+                    try 
+                    {
+                    for (const auto& entry : fs::recursive_directory_iterator(fs::path(item->text().toStdString()))) 
+                    {
+                        filteredFiles.push_back(entry.path().string());
+                    }
+                    } 
+                    catch (const std::exception& e) {
+                        QMessageBox::critical(this, "错误", QString("无法加载文件列表: %1").arg(e.what()));
+                    }
+                }
             }
         }
-        if(filteredFiles.size()==fileList->count())
+        if(isEmptyBackup)
         {
             QMessageBox::warning(this, "警告", "没有选中的文件进行备份");
             return;
         }
         std::string dirStr = backupDirEdit->text().toStdString();
         std::string strFilteredFiles("");
+        std::cout<<"被筛选的文件：\n";
         for(int i=0;i<filteredFiles.size();i++)
         {
+            std::cout<<filteredFiles[i]<<"\n";
             std::string relativePath = filteredFiles[i].substr(dirStr.size()+1);
             strFilteredFiles.append(std::format("{}\n",relativePath));
         }
@@ -163,7 +199,7 @@ private slots:
             backupDirEdit->text().toStdString(),
             saveLocationEdit->text().toStdString(),
             huffmanRadio->isChecked()?"HUFFMAN":"LZ77",
-            "AES_256_CBC",
+            passwordEdit->text().toStdString().empty()?"NONE":"AES_256_CBC",
             passwordEdit->text().toStdString(),
             strFilteredFiles
         );
@@ -216,8 +252,7 @@ private slots:
         // 解析加密方式
         std::string password;
         bool isEncrypted = (infoStr.find("encryption method:AES 256 CBC") != std::string::npos);
-        std::cout<<infoStr<<"\n";
-        std::cout<<isEncrypted<<"\n";
+
         if (isEncrypted) {
             bool ok;
             QString qPassword = QInputDialog::getText(
@@ -262,6 +297,7 @@ private slots:
 private:
     // UI组件
     QListWidget *fileList;
+    QListWidget *fullFileList;
     QLineEdit *backupDirEdit;
     QLineEdit *saveLocationEdit;
     QLineEdit *fileFilterEdit;
@@ -330,12 +366,22 @@ private:
         // 文件列表
         fileList = new QListWidget();
         fileList->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        fullFileList =new QListWidget();
+        connect(fileList, &QListWidget::itemChanged, this, [this](QListWidgetItem *item) {
+            // 遍历fullFileList，找到路径匹配的项，同步勾选状态
+            for (int i = 0; i < fullFileList->count(); ++i) {
+                QListWidgetItem *fullItem = fullFileList->item(i);
+                if (fullItem->text() == item->text()) {
+                    fullItem->setCheckState(item->checkState());
+                    break;
+                }
+            }
+        });
 
         layout->addLayout(dirLayout);
         layout->addLayout(filterLayout);
         layout->addWidget(new QLabel("文件列表:"));
         layout->addWidget(fileList);
-
         mainLayout->addWidget(fileGroup);
     }
 
@@ -371,7 +417,7 @@ private:
         QHBoxLayout *encryptionLayout = new QHBoxLayout();
         passwordEdit = new QLineEdit();
         passwordEdit->setEchoMode(QLineEdit::Password);
-        passwordEdit->setPlaceholderText("输入加密密码（为空则使用默认加密）");
+        passwordEdit->setPlaceholderText("输入加密密码（为空则不加密）");
         encryptionLayout->addWidget(new QLabel("加密密码:"));
         encryptionLayout->addWidget(passwordEdit);
 
@@ -441,7 +487,6 @@ void displayMetadata(const std::string& metadataStr)
         std::string lastLine = metadataStr.substr(pos);
         if (!lastLine.empty()) lines.push_back(lastLine);
     }
-
     // 2. 定义元数据分类节点（仅展示后端返回的项，无则不显示对应节点）
     QTreeWidgetItem *basicItem = new QTreeWidgetItem({"基本信息"});
     QTreeWidgetItem *compressionItem = new QTreeWidgetItem({"压缩信息"});

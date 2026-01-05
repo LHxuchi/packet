@@ -31,3 +31,15 @@ cd build
 cmake ..
 make
 ```
+## 项目运行
+当项目构建成功后，相关的可执行程序会生成到bin目录下
+若要执行单元测试，则执行如下命令
+```bash
+cd bin
+./utest
+```
+若要执行图形化程序，则执行如下命令
+```bash
+cd bin
+./backup_gui
+```

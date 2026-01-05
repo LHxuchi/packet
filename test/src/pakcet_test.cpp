@@ -37,7 +37,6 @@ TEST_CASE("verify packet content and structure", "[packet]")
 
     auto test_path = fs::path("./mytest");
     test_path = fs::canonical(test_path);
-
     // 定义每个文件对应的写入内容（键为相对路径，值为内容）
     std::map<std::string, std::string> file_contents = {
         {"test1.txt", "Content for root test file"},
@@ -46,8 +45,9 @@ TEST_CASE("verify packet content and structure", "[packet]")
         {"dir2/test2.txt", "Content for dir2 test file"},
         {".hidden_dir/config", "Content for hidden dir config file"}
     };
-
-    std::ifstream ifs(R"(/home/hyh/CLionProjects/packet/test/static/test.txt)");
+    auto static_file_path=fs::path("../test/static/test.txt");
+    static_file_path= fs::canonical(static_file_path);
+    std::ifstream ifs(static_file_path);
     std::string long_content{std::istreambuf_iterator<char>(ifs),std::istreambuf_iterator<char>()};
     file_contents.insert({"test_long_file.txt", long_content});
 
@@ -174,7 +174,8 @@ TEST_CASE("verify packet content and structure", "[packet]")
                 symlink_found = true;
                 CHECK(p.info().get_file_type() == fs::file_type::symlink);
                 // 验证符号链接目标正确
-                CHECK(p.info().get_link_name() == "/home/hyh/CLionProjects/packet/bin/mytest/test1.txt");
+                auto link_name_path=fs::canonical(fs::path("./mytest/test1.txt"));
+                CHECK(p.info().get_link_name() == link_name_path.string());
                 break;
             }
         }
@@ -216,7 +217,21 @@ TEST_CASE("verify packet content and structure", "[packet]")
     SECTION("write and read")
     {
         // 写入数据包到文件
-        std::fstream my_file("/home/hyh/CLionProjects/packet/bin/packet.pkt",
+        auto my_file_path=fs::path("./packet.pkt");
+        fs::path dir_path = my_file_path.parent_path(); // 获取文件所在目录（./）
+        std::string file_name = my_file_path.filename().string(); // 获取文件名（packet.pkt）
+        
+        // 确保目录存在（如果目录不存在则创建）
+        if (!fs::exists(dir_path)) {
+            fs::create_directories(dir_path); // 递归创建目录
+        }
+        
+        // 获取目录的规范化绝对路径
+        fs::path abs_dir_path = fs::canonical(dir_path);
+        
+        // 拼接得到文件的完整绝对路径
+        fs::path abs_file_path = abs_dir_path / file_name;
+        std::fstream my_file(abs_file_path,
             std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
 
         if (!my_file.is_open())
@@ -292,7 +307,8 @@ TEST_CASE("verify packet content and structure", "[packet]")
 
     SECTION("unpack")
     {
-        fs::path unpack_path = R"(/home/hyh/test)";
+
+        fs::path unpack_path = R"(./test)";
         fs::create_directory(unpack_path);
         dp::unpack_packet(unpack_path,pkt);
 

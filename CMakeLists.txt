@@ -83,5 +83,3 @@ set_target_properties(backup_gui PROPERTIES
     AUTORCC ON  # 若有资源文件需开启，这里无需
 )
 
-# -------------------------- 6. 保留原有测试目录 --------------------------
-add_subdirectory("${CMAKE_SOURCE_DIR}/test")
